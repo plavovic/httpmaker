@@ -4,12 +4,8 @@ export type SectionVariant = "luxury" | "brutalist";
 
 export type Alignment = "left" | "center" | "right";
 
-export type WebsiteTheme = {
-  backgroundColor: string;
-  primaryColor: string;
-  textColor: string;
-  fontFamily: string;
-};
+import type { DesignPresetId, ImageTreatment, SpacingScale, VisualDensity } from "@/types/designPreset";
+export type WebsiteTheme = { backgroundColor:string; surfaceColor:string; primaryColor:string; secondaryColor:string; accentColor:string; textColor:string; mutedTextColor:string; headingFont:string; bodyFont:string; borderRadius:number; spacingScale:SpacingScale; visualDensity:VisualDensity; imageTreatment:ImageTreatment; fontFamily?:string };
 
 export type WebsiteSectionProps = {
   title: string;
@@ -37,6 +33,8 @@ export type WebsiteSection = {
 };
 
 export type WebsiteJSON = {
+  presetId?: DesignPresetId;
+  isThemeCustomized?: boolean;
   theme: WebsiteTheme;
   sections: WebsiteSection[];
 };

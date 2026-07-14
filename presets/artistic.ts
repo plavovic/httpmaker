@@ -1,0 +1,2 @@
+import { preset } from "./shared";
+export const artisticPreset=preset("artistic","Artistic","Editorial, expressive and warmly composed.",["editorial","serif","asymmetric"],{backgroundColor:"#f5eee5",surfaceColor:"#fffaf3",primaryColor:"#251b16",secondaryColor:"#8f6048",accentColor:"#b34d35",textColor:"#251b16",mutedTextColor:"#74665d",headingFont:"Georgia",bodyFont:"Inter",borderRadius:8,spacingScale:"spacious",visualDensity:"editorial",imageTreatment:"soft"});

@@ -1,0 +1,2 @@
+import { preset } from "./shared";
+export const modernPreset=preset("modern","Modern","Clean typography, neutral surfaces and a bold accent.",["clean","neutral","balanced"],{backgroundColor:"#f4f4f1",surfaceColor:"#ffffff",primaryColor:"#191919",secondaryColor:"#62625d",accentColor:"#5b5ce2",textColor:"#191919",mutedTextColor:"#71716b",headingFont:"Geist",bodyFont:"Inter",borderRadius:20,spacingScale:"normal",visualDensity:"balanced",imageTreatment:"natural"});

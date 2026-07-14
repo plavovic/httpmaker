@@ -1,11 +1,22 @@
 import type { WebsiteJSON } from "@/types/website";
 
 export const initialWebsite: WebsiteJSON = {
+  presetId: "artistic",
+  isThemeCustomized: false,
   theme: {
     backgroundColor: "#f7f0e7",
+    surfaceColor: "#fffaf3",
     primaryColor: "#111111",
+    secondaryColor: "#8b5e3c",
+    accentColor: "#b4533c",
     textColor: "#111111",
-    fontFamily: "Georgia, 'Times New Roman', serif",
+    mutedTextColor: "#6f665d",
+    headingFont: "Georgia",
+    bodyFont: "Inter",
+    borderRadius: 24,
+    spacingScale: "spacious",
+    visualDensity: "editorial",
+    imageTreatment: "natural",
   },
   sections: [
     {

@@ -1,0 +1,2 @@
+import { preset } from "./shared";
+export const analyticalPreset=preset("analytical","Analytical","Structured grids and precise information design.",["grid","data","precise"],{backgroundColor:"#eef3f8",surfaceColor:"#ffffff",primaryColor:"#183b5b",secondaryColor:"#526b80",accentColor:"#2878b5",textColor:"#10283d",mutedTextColor:"#617486",headingFont:"Arial",bodyFont:"Inter",borderRadius:4,spacingScale:"compact",visualDensity:"compact",imageTreatment:"high-contrast"});

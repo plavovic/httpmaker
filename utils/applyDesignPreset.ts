@@ -1,0 +1,8 @@
+import { sectionRegistry } from "@/renderer/sectionRegistry";
+import type { DesignPreset } from "@/types/designPreset";
+import type { SectionType, SectionVariant, WebsiteJSON, WebsiteSection } from "@/types/website";
+import { presetWebsites } from "@/presets/templates";
+export type ApplyPresetMode="restyle"|"replace-layout"|"create-copy";
+const animation=(value:string):WebsiteSection["animation"]=>["none","fade","slide-up","slide-left","slide-right","scale"].includes(value)?value as WebsiteSection["animation"]:"fade";
+function safeVariant(type:SectionType,requested:string|undefined,current:SectionVariant):SectionVariant { const variants=Object.keys(sectionRegistry[type]) as SectionVariant[]; if(requested&&variants.includes(requested as SectionVariant))return requested as SectionVariant;if(variants.includes(current))return current;return variants[0]; }
+export function applyDesignPreset(website:WebsiteJSON,preset:DesignPreset,mode:ApplyPresetMode):WebsiteJSON { if(mode==="replace-layout"){const template=presetWebsites[preset.id];return {...template,theme:{...template.theme},sections:template.sections.map(section=>({...section,props:{...section.props},content:{...section.content}}))};} if(mode==="create-copy")return {...website,theme:{...website.theme},sections:website.sections.map(section=>({...section,props:{...section.props}}))}; return { ...website,presetId:preset.id,isThemeCustomized:false,theme:{...preset.theme},sections:website.sections.map(section=>{const requested=preset.sectionDefaults[`${section.type}Variant` as keyof typeof preset.sectionDefaults];return {...section,variant:safeVariant(section.type,requested,section.variant),animation:animation(preset.animationDefaults.body),props:{...section.props}}})}; }

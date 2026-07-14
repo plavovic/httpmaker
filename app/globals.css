@@ -282,3 +282,23 @@ body {
   .preview-section-hero section > div { padding: 14px !important; }
   .status-desktop { display: none; }
 }
+
+/* Customer website rendering is isolated from the editor chrome. */
+.device-canvas { max-width: 100%; margin: 0 auto; transition: width 180ms ease; background: var(--site-background); }
+.site-renderer { min-height: 100%; overflow: hidden; background: var(--site-background); color: var(--site-text); font-family: var(--site-body-font); }
+.site-renderer h1,.site-renderer h2,.site-renderer h3,.site-renderer h4 { font-family: var(--site-heading-font); }
+.site-renderer .site-section > section,.site-renderer .site-section > footer,.site-renderer .site-section > div { border-radius: var(--site-radius) !important; background-color: var(--site-surface); color: var(--site-text); }
+.site-renderer .site-section button { border-radius: var(--site-radius); }
+.site-renderer .site-section img { border-radius: var(--site-radius); }
+.site-renderer.site-spacing-compact .site-section > * { padding-top: 1.25rem !important; padding-bottom: 1.25rem !important; }
+.site-renderer.site-spacing-spacious .site-section > * { padding-top: 4rem !important; padding-bottom: 4rem !important; }
+.site-renderer.site-density-compact { font-size: .92rem; }
+.site-renderer.site-density-editorial { font-size: 1.06rem; }
+.site-preview .site-section { margin: 0; padding: 0; border: 0; }
+.site-preview .site-section > * { margin: 0; width: 100%; border-radius: 0 !important; }
+.site-edit .site-section { outline: 1px solid transparent; outline-offset: -1px; }
+.site-edit .site-section:hover { outline-color: var(--vscode-border); }
+.site-edit .site-section-selected { outline: 2px solid var(--vscode-blue); z-index: 2; }
+.editor-control-drawer { position: fixed; z-index: 35; top: 62px; right: 16px; width: min(440px,calc(100vw - 32px)); max-height: calc(100vh - 90px); overflow: auto; border: 1px solid var(--vscode-border); background: var(--vscode-panel); color: var(--vscode-text); box-shadow: 0 20px 50px rgba(0,0,0,.4); padding: 16px; cursor: auto; }
+.editor-panel h2 { font-size: 18px; font-weight: 700; }.editor-panel>p { margin-top: 5px; color: var(--vscode-text-secondary); font-size: 12px; }.editor-panel h3 { margin: 20px 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .14em; color: var(--vscode-cyan); }.editor-panel input,.editor-panel select { width: 100%; margin-top: 5px; border: 1px solid var(--vscode-border); background: var(--vscode-bg); padding: 7px; color: var(--vscode-text); }.editor-panel button { display:block; width:100%; margin-top:6px; border:1px solid var(--vscode-border); padding:8px; text-align:left; }
+.preset-card { overflow:hidden; border:1px solid var(--vscode-border); }.preset-card.selected { border-color:var(--vscode-yellow); }.preset-mini { height:145px; padding:10px; overflow:hidden; }.preset-mini-nav { display:flex; justify-content:space-between; font-size:9px }.preset-mini-nav i { width:24px;height:7px }.preset-mini-hero { display:grid;grid-template-columns:1.2fr .8fr;gap:7px;margin-top:13px }.preset-mini-hero strong { display:block;font-size:13px;line-height:1.05 }.preset-mini-hero span { display:block;width:28px;height:7px;margin-top:9px }.preset-mini-hero>div:last-child { height:65px }.preset-mini-content{height:16px;margin-top:7px;background:rgba(127,127,127,.18)}.preset-mini-footer{height:9px;margin-top:6px}.preset-dialog-backdrop{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(0,0,0,.68)}.preset-dialog{width:min(420px,90vw);padding:20px;background:var(--vscode-panel);border:1px solid var(--vscode-border)}.preset-dialog button span{display:block;font-size:10px;opacity:.6}.preset-dialog button:disabled{opacity:.45}.theme-color{display:grid;grid-template-columns:90px 35px 1fr 48px 48px;gap:5px;align-items:center;font-size:11px}.theme-color input{margin:0!important;padding:3px!important}.theme-color button{margin:0!important;padding:6px!important;text-align:center}.theme-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;font-size:11px}.palette-list{display:grid;grid-template-columns:1fr 1fr;gap:5px}.palette-list button{font-size:10px}.active-tab{color:var(--vscode-yellow)!important;border-color:var(--vscode-yellow)!important}

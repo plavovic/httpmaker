@@ -34,7 +34,7 @@ export function applyPromptCommand(website: WebsiteJSON, message: string, select
   if (lower.includes("tech-brutalist") || lower.includes("brutalist")) {
     nextWebsite = {
       ...nextWebsite,
-      theme: { backgroundColor: "#050505", primaryColor: "#f2b807", textColor: "#f8fafc", fontFamily: "Inter, sans-serif" },
+      theme: { ...nextWebsite.theme, backgroundColor: "#050505", surfaceColor: "#111111", primaryColor: "#f2b807", textColor: "#f8fafc", mutedTextColor: "#a1a1aa", headingFont: "Inter", bodyFont: "Inter", imageTreatment: "high-contrast" },
       sections: nextWebsite.sections.map((section) => ({ ...section, variant: "brutalist" })),
     };
   }
@@ -42,7 +42,7 @@ export function applyPromptCommand(website: WebsiteJSON, message: string, select
   if (lower.includes("luxury") || lower.includes("pastel") || lower.includes("elegant")) {
     nextWebsite = {
       ...nextWebsite,
-      theme: { backgroundColor: "#f7f0e7", primaryColor: "#111111", textColor: "#111111", fontFamily: "Georgia, 'Times New Roman', serif" },
+      theme: { ...nextWebsite.theme, backgroundColor: "#f7f0e7", surfaceColor: "#fffaf3", primaryColor: "#111111", textColor: "#111111", mutedTextColor: "#6f665d", headingFont: "Georgia", bodyFont: "Inter", imageTreatment: "soft" },
       sections: nextWebsite.sections.map((section) => ({ ...section, variant: "luxury" })),
     };
   }

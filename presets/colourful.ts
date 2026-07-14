@@ -1,0 +1,2 @@
+import { preset } from "./shared";
+export const colourfulPreset=preset("colourful","Colourful","Bright, friendly and energetic without losing polish.",["bright","playful","friendly"],{backgroundColor:"#fff6e8",surfaceColor:"#ffffff",primaryColor:"#3d2475",secondaryColor:"#ef5b5b",accentColor:"#ffb000",textColor:"#2b1b42",mutedTextColor:"#745f82",headingFont:"Trebuchet MS",bodyFont:"Inter",borderRadius:32,spacingScale:"normal",visualDensity:"balanced",imageTreatment:"vibrant"});

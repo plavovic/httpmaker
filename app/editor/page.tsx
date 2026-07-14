@@ -2,7 +2,10 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import EditorSidebar, { type ChatMessage, type PromptHistoryItem } from "@/components/editor/EditorSidebar";
-import EditorToolbar from "@/components/editor/EditorToolbar";
+import EditorToolbar, { type DeviceMode, type EditorTab } from "@/components/editor/EditorToolbar";
+import DesignPresetPanel from "@/components/editor/presets/DesignPresetPanel";
+import ThemePanel from "@/components/editor/theme/ThemePanel";
+import SectionProperties from "@/components/editor/SectionProperties";
 import PreviewDashboard from "@/components/editor/PreviewDashboard";
 import { initialWebsite } from "@/data/initialWebsite";
 import WebsiteRenderer from "@/renderer/WebsiteRenderer";
@@ -21,6 +24,8 @@ export default function EditorPage() {
   const [autoMode, setAutoMode] = useState(true);
   const [colorMode, setColorMode] = useState<ColorMode>("light");
   const [storageReady, setStorageReady] = useState(false);
+  const [editorTab, setEditorTab] = useState<EditorTab>("ai");
+  const [device, setDevice] = useState<DeviceMode>("desktop");
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const dragStateRef = useRef<{ isDragging: boolean; startX: number; startY: number }>({ isDragging: false, startX: 0, startY: 0 });
 
@@ -100,7 +105,7 @@ export default function EditorPage() {
 
   const openPreview = () => {
     localStorage.setItem(WEBSITE_STORAGE_KEY, JSON.stringify(websiteJSON));
-    window.open("/sites/preview", "_blank", "noopener,noreferrer");
+    window.open("/preview", "_blank", "noopener,noreferrer");
   };
 
   const handleSend = (event: FormEvent) => {
@@ -126,10 +131,14 @@ export default function EditorPage() {
       <EditorSidebar colorMode={colorMode} onToggleColorMode={() => setColorMode((mode) => mode === "dark" ? "light" : "dark")} messages={messages} history={history} isProcessing={isProcessing} prompt={prompt} onPromptChange={setPrompt} autoMode={autoMode} onToggleAutoMode={() => setAutoMode((value) => !value)} onSubmit={handleSend} />
       <section className="ide-workspace flex-1 min-h-0 overflow-hidden">
         <div className="flex h-full flex-col">
-          <EditorToolbar viewMode={viewMode} onViewModeChange={setViewMode} onOpenPreview={openPreview} />
+          <EditorToolbar viewMode={viewMode} onViewModeChange={setViewMode} onOpenPreview={openPreview} editorTab={editorTab} onEditorTabChange={setEditorTab} device={device} onDeviceChange={setDevice} />
           <div ref={viewportRef} className="editor-viewport flex-1 min-h-0 overflow-auto cursor-grab">
             <PreviewDashboard visible={viewMode === "dashboard"} website={websiteJSON} aiActions={history.length} onWebsiteChange={setWebsiteJSON} />
-            <WebsiteRenderer website={websiteJSON} selection={selection} onSelectionChange={setSelection} onUpdateElement={updateElement} onUpdateElementStyle={updateElementStyle} onUpdateElementLink={updateElementLink} onRemoveSection={removeSection} onDuplicateSection={duplicateSection} onChangeVariant={changeVariant} onMoveSection={moveSection} editable={viewMode === "edit"} />
+            {editorTab==="design"&&<aside className="editor-control-drawer"><DesignPresetPanel website={websiteJSON} onChange={setWebsiteJSON}/></aside>}
+            {editorTab==="theme"&&<aside className="editor-control-drawer"><ThemePanel website={websiteJSON} onChange={setWebsiteJSON}/></aside>}
+            {editorTab==="layers"&&<aside className="editor-control-drawer editor-panel"><h2>Layers</h2>{websiteJSON.sections.map(section=><button type="button" key={section.id} onClick={()=>{setSelection({sectionId:section.id});setViewMode("edit")}}>{section.type} · {section.variant}</button>)}</aside>}
+            {editorTab==="properties"&&websiteJSON.sections.find(s=>s.id===selection.sectionId)&&<aside className="editor-control-drawer"><SectionProperties selectedSection={websiteJSON.sections.find(s=>s.id===selection.sectionId)!} onUpdateProp={(key,value)=>updateElement(selection.sectionId,key as EditableElementKey,value)}/></aside>}
+            {viewMode!=="dashboard"&&<div className="device-canvas" style={{width:device==="desktop"?"100%":device==="tablet"?"768px":"390px"}}><WebsiteRenderer website={websiteJSON} renderMode={viewMode==="edit"?"edit":"preview"} selection={selection} onSelectionChange={setSelection} onUpdateElement={updateElement} onUpdateElementStyle={updateElementStyle} onUpdateElementLink={updateElementLink} onRemoveSection={removeSection} onDuplicateSection={duplicateSection} onChangeVariant={changeVariant} onMoveSection={moveSection} /></div>}
           </div>
         </div>
       </section>

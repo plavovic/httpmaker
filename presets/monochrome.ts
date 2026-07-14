@@ -1,0 +1,2 @@
+import { preset } from "./shared";
+export const monochromePreset=preset("monochrome","Monochrome","High contrast, strong type and minimal decoration.",["black","white","minimal"],{backgroundColor:"#f5f5f5",surfaceColor:"#ffffff",primaryColor:"#050505",secondaryColor:"#555555",accentColor:"#111111",textColor:"#050505",mutedTextColor:"#6b6b6b",headingFont:"Arial",bodyFont:"Arial",borderRadius:0,spacingScale:"normal",visualDensity:"compact",imageTreatment:"monochrome"},"brutalist");

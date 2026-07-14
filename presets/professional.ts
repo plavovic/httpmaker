@@ -1,0 +1,2 @@
+import { preset } from "./shared";
+export const professionalPreset=preset("professional","Professional","Trustworthy, restrained and highly readable.",["corporate","trust","clear"],{backgroundColor:"#f5f7fa",surfaceColor:"#ffffff",primaryColor:"#17324d",secondaryColor:"#56697c",accentColor:"#2c6e9f",textColor:"#172b3d",mutedTextColor:"#657585",headingFont:"Arial",bodyFont:"Arial",borderRadius:8,spacingScale:"normal",visualDensity:"balanced",imageTreatment:"natural"});
