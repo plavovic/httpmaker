@@ -84,7 +84,7 @@ body {
 
 .editor-viewport { height: 0; min-height: 0; flex: 1 1 0%; border: 0 !important; background: rgba(1,22,39,.88) !important; padding: 28px !important; overflow: auto; overscroll-behavior: contain; cursor: grab; }
 .editor-viewport.cursor-grabbing { cursor: grabbing; }
-.editor-viewport > div:last-child { max-width: 1120px; margin: 0 auto; border: 1px solid var(--vscode-border) !important; border-radius: 3px !important; background: var(--vscode-bg) !important; padding: 18px !important; box-shadow: 0 14px 40px rgba(0,0,0,.25); }
+.editor-viewport > div:last-child { max-width: 1120px; margin: 0 auto; border: 1px solid var(--vscode-border) !important; border-radius: 3px !important; padding: 18px !important; box-shadow: 0 14px 40px rgba(0,0,0,.25); }
 .editor-viewport > div:first-child:not(:last-child) > div { border: 1px solid var(--vscode-border) !important; border-radius: 3px !important; background: var(--vscode-panel) !important; color: var(--vscode-text) !important; }
 .preview-section { margin-bottom: 8px !important; border-radius: 3px !important; padding: 4px !important; }
 .preview-section:hover { border-color: var(--vscode-border) !important; }
@@ -93,16 +93,6 @@ body {
 .section-drag-handle { cursor: grab; padding: 5px 7px; user-select: none; }
 .section-drag-handle:active { cursor: grabbing; }
 .preview-section[class*="border-blue"] { border-color: var(--vscode-blue) !important; box-shadow: 0 0 0 1px rgba(130,170,255,.16) !important; }
-.preview-section > * { border-color: var(--vscode-border) !important; border-radius: 3px !important; background: var(--vscode-panel) !important; color: var(--vscode-text) !important; }
-.preview-section button { border: 1px solid var(--vscode-border); border-radius: 3px !important; background: transparent; color: var(--vscode-text); transition: 140ms ease; }
-.preview-section button:hover { border-color: var(--vscode-blue) !important; color: var(--vscode-blue) !important; }
-.preview-section button:first-of-type { border-color: var(--vscode-blue); background: var(--vscode-blue); color: var(--vscode-bg); }
-.preview-section p[class*="uppercase"] { color: var(--vscode-green); }
-.preview-section h1, .preview-section h2 { color: var(--vscode-text); text-transform: none !important; letter-spacing: -.045em !important; }
-.preview-section h1::before { content: "// AI WEBSITE BUILDER"; display: block; margin-bottom: 18px; color: var(--vscode-text-muted); font-size: 12px; font-weight: 400; letter-spacing: .14em; }
-.preview-section-hero img { border: 1px solid var(--vscode-border) !important; border-radius: 3px !important; filter: saturate(.78) contrast(1.04); }
-.preview-section-features > section > div:last-child > div { border-color: var(--vscode-border) !important; border-radius: 3px !important; background: var(--vscode-surface) !important; }
-.preview-section-features > section > div:last-child > div > div { border-radius: 2px !important; background: linear-gradient(135deg, var(--vscode-blue), var(--vscode-pink)) !important; opacity: .78; }
 
 .status-bar { position: fixed; z-index: 40; inset: auto 0 0; height: 23px; display: flex; align-items: center; gap: 17px; overflow: hidden; padding: 0 10px; border-top: 1px solid #4b78bb; background: #0b4f84; color: #eef7ff; font-size: 11px; white-space: nowrap; }
 .status-brand { font-weight: 800; }
@@ -155,8 +145,6 @@ body {
 .theme-toggle:hover { border-color: var(--vscode-blue) !important; color: var(--vscode-blue) !important; }
 .ide-shell[data-theme="light"] .ide-workspace header { background: #d4e5f1 !important; }
 .ide-shell[data-theme="light"] .editor-viewport { background: rgba(219,233,244,.92) !important; }
-.ide-shell[data-theme="light"] .preview-section > * { color: var(--vscode-text) !important; }
-.ide-shell[data-theme="light"] .preview-section p { color: var(--vscode-text-secondary); }
 
 .ide-sidebar .thought-entry {
   margin-left: 0;

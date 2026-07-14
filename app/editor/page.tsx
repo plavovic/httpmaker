@@ -8,6 +8,7 @@ import { initialWebsite } from "@/data/initialWebsite";
 import WebsiteRenderer from "@/renderer/WebsiteRenderer";
 import type { ColorMode, EditableElementKey, EditableElementStyle, EditorSelection, ViewMode, WebsiteJSON } from "@/types/website";
 import { applyPromptCommand } from "@/utils/applyPromptCommand";
+import { EDITOR_THEME_STORAGE_KEY, readStoredEditorTheme, readStoredWebsite, WEBSITE_STORAGE_KEY } from "@/utils/editorStorage";
 
 export default function EditorPage() {
   const [websiteJSON, setWebsiteJSON] = useState<WebsiteJSON>(initialWebsite);
@@ -18,9 +19,23 @@ export default function EditorPage() {
   const [history, setHistory] = useState<PromptHistoryItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [autoMode, setAutoMode] = useState(true);
-  const [colorMode, setColorMode] = useState<ColorMode>("dark");
+  const [colorMode, setColorMode] = useState<ColorMode>("light");
+  const [storageReady, setStorageReady] = useState(false);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const dragStateRef = useRef<{ isDragging: boolean; startX: number; startY: number }>({ isDragging: false, startX: 0, startY: 0 });
+
+  useEffect(() => {
+    const storedWebsite = readStoredWebsite();
+    if (storedWebsite) setWebsiteJSON(storedWebsite);
+    setColorMode(readStoredEditorTheme());
+    setStorageReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!storageReady) return;
+    localStorage.setItem(WEBSITE_STORAGE_KEY, JSON.stringify(websiteJSON));
+    localStorage.setItem(EDITOR_THEME_STORAGE_KEY, colorMode);
+  }, [colorMode, storageReady, websiteJSON]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -83,6 +98,11 @@ export default function EditorPage() {
   const changeVariant = (sectionId: string, variant: "luxury"|"brutalist") => setWebsiteJSON((current)=>({...current,sections:current.sections.map((section)=>section.id===sectionId?{...section,variant}:section)}));
   const moveSection = (sourceId:string,targetId:string)=>setWebsiteJSON((current)=>{const from=current.sections.findIndex(s=>s.id===sourceId);const to=current.sections.findIndex(s=>s.id===targetId);if(from<0||to<0||from===to)return current;const sections=[...current.sections];const [moved]=sections.splice(from,1);sections.splice(to,0,moved);return {...current,sections}});
 
+  const openPreview = () => {
+    localStorage.setItem(WEBSITE_STORAGE_KEY, JSON.stringify(websiteJSON));
+    window.open("/sites/preview", "_blank", "noopener,noreferrer");
+  };
+
   const handleSend = (event: FormEvent) => {
     event.preventDefault();
     const message = prompt.trim();
@@ -99,12 +119,14 @@ export default function EditorPage() {
     }, 700);
   };
 
+  if (!storageReady) return <main data-theme="light" className="ide-shell h-screen" aria-label="Loading editor" />;
+
   return (
     <main data-theme={colorMode} className="ide-shell flex h-screen min-h-0 flex-col overflow-hidden lg:flex-row">
       <EditorSidebar colorMode={colorMode} onToggleColorMode={() => setColorMode((mode) => mode === "dark" ? "light" : "dark")} messages={messages} history={history} isProcessing={isProcessing} prompt={prompt} onPromptChange={setPrompt} autoMode={autoMode} onToggleAutoMode={() => setAutoMode((value) => !value)} onSubmit={handleSend} />
       <section className="ide-workspace flex-1 min-h-0 overflow-hidden">
         <div className="flex h-full flex-col">
-          <EditorToolbar viewMode={viewMode} onViewModeChange={setViewMode} />
+          <EditorToolbar viewMode={viewMode} onViewModeChange={setViewMode} onOpenPreview={openPreview} />
           <div ref={viewportRef} className="editor-viewport flex-1 min-h-0 overflow-auto cursor-grab">
             <PreviewDashboard visible={viewMode === "dashboard"} website={websiteJSON} aiActions={history.length} onWebsiteChange={setWebsiteJSON} />
             <WebsiteRenderer website={websiteJSON} selection={selection} onSelectionChange={setSelection} onUpdateElement={updateElement} onUpdateElementStyle={updateElementStyle} onUpdateElementLink={updateElementLink} onRemoveSection={removeSection} onDuplicateSection={duplicateSection} onChangeVariant={changeVariant} onMoveSection={moveSection} editable={viewMode === "edit"} />
