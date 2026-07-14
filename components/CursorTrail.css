@@ -1,0 +1,86 @@
+* {
+    margin: 0;
+    paddin: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: #101010;
+
+}
+
+img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+p {
+    color: #4e4e4e;
+    text-transform: uppercase;
+    font-family: "IMB Plex Sans", sans-serif;
+    font-size: 0.85rem;
+}
+
+.hero {
+    position: relative;
+    width: 100vw;
+    height: 100svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.hero-img {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    opacity: 0.2;
+}
+
+.trail-container {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: 20;
+    pointer-events: none;
+    isolation: isolate;
+}
+
+.trail-img {
+    position: absolute;
+    width: 170px;
+    height: 170px;
+    pointer-events: none;
+    transform: translateZ(0);
+    will-change: transform, left, top;
+}
+
+.trail-img .mask-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    overflow: hidden;
+    will-change: clip-path;
+    transform: translateZ(0);
+}
+
+.trail-img .mask-layer .image-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    border-radius: 18px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+    transform: scale(1.02);
+    backface-visibility: hidden;
+}

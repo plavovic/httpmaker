@@ -1,0 +1,7 @@
+import type { ViewMode } from "@/types/website";
+
+type EditorToolbarProps = { viewMode: ViewMode; onViewModeChange: (mode: ViewMode) => void };
+
+export default function EditorToolbar({ viewMode, onViewModeChange }: EditorToolbarProps) {
+  return <header className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-zinc-200 bg-white/90 px-4 py-3"><div className="flex items-center gap-2 rounded-full bg-zinc-100 p-1">{(["preview", "dashboard", "edit"] as ViewMode[]).map((mode) => <button type="button" key={mode} onClick={() => onViewModeChange(mode)} className={`rounded-full px-3 py-1.5 text-sm capitalize ${viewMode === mode ? "bg-zinc-900 text-white" : "text-zinc-600"}`}>{mode}</button>)}</div><div className="flex items-center gap-3"><label className="flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600"><span>📱</span><select className="bg-transparent outline-none" defaultValue="Home"><option>Home</option><option>Pricing</option><option>About</option></select></label><div className="flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-2 py-1.5"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900 text-sm font-semibold text-white">A</div><span className="text-sm font-medium text-zinc-700">Ada</span></div><button type="button" className="rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white">Publish</button></div></header>;
+}
