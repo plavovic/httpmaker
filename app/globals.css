@@ -513,7 +513,24 @@ body {
 }
 
 .studio-viewport { padding: 38px !important; background-color: #111113 !important; background-image: radial-gradient(rgba(255,255,255,.075) .65px,transparent .65px),radial-gradient(circle at 50% 0,rgba(167,139,250,.07),transparent 42%) !important; background-size: 18px 18px,100% 100% !important; }
-.studio-viewport .device-canvas { border: 1px solid var(--studio-line-strong) !important; border-radius: 10px !important; box-shadow: 0 30px 90px rgba(0,0,0,.48),0 0 0 6px rgba(255,255,255,.018) !important; }
+/* Reset the legacy `.editor-viewport > div:last-child` card treatment. The
+   active device canvas must use the selected device width without inherited
+   padding or the old 1120px cap. */
+.studio-viewport > .device-canvas {
+  box-sizing: border-box;
+  max-width: 100% !important;
+  margin: 0 auto;
+  padding: 0 !important;
+  border: 1px solid var(--studio-line-strong) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 30px 90px rgba(0,0,0,.48),0 0 0 6px rgba(255,255,255,.018) !important;
+}
+.studio-toolbar button:focus-visible,
+.section-floating-controls button:focus-visible,
+.section-drag-handle:focus-visible {
+  outline: 2px solid var(--studio-accent);
+  outline-offset: 2px;
+}
 .studio-shell .editor-control-drawer { top: 82px; right: 20px; border-color: var(--studio-line-strong); border-radius: 14px; background: rgba(27,27,30,.96); box-shadow: 0 28px 80px rgba(0,0,0,.55); }
 .studio-shell .dashboard-panel { color: var(--studio-text); }
 
@@ -620,6 +637,6 @@ body {
 .studio-shell[data-theme="light"] .element-toolbar select option { background: #fff; color: #2b2632; }
 
 @media(max-width:1280px){.studio-toolbar{grid-template-columns:auto 1fr auto}.studio-project>div:last-child{display:none}.studio-panel-nav{justify-self:start;margin-left:10px}.studio-view-switch{display:none}}
-@media(max-width:900px){.studio-toolbar{display:flex;overflow-x:auto}.studio-project{display:none}.studio-panel-nav{margin:0}.studio-actions{margin-left:auto}.studio-shell .editor-tabs{min-width:360px}.studio-viewport{padding:20px!important}}
+@media(max-width:900px){.studio-toolbar{display:flex;overflow-x:auto}.studio-project{display:none}.studio-panel-nav{margin:0}.studio-actions{margin-left:auto}.studio-shell .editor-tabs{min-width:360px}.studio-viewport{padding:20px!important}.studio-viewport>.device-canvas{min-width:0}}
 @media(max-width:680px){.studio-toolbar{min-height:54px!important}.studio-shell .editor-tabs{min-width:340px}.studio-actions{padding-right:8px}.studio-device-switch{display:none}.studio-toolbar .studio-publish-button{width:6.5em;height:2.6em}.studio-viewport{padding:10px!important}}
-@media(prefers-reduced-motion:reduce){.studio-toolbar .studio-publish-button:hover{animation:none}}
+@media(prefers-reduced-motion:reduce){.studio-toolbar .studio-publish-button:hover,.section-action-menu{animation:none}.studio-viewport>.device-canvas{transition:none}}
