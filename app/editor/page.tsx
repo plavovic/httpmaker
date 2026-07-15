@@ -127,12 +127,12 @@ export default function EditorPage() {
   if (!storageReady) return <main data-theme="light" className="ide-shell h-screen" aria-label="Loading editor" />;
 
   return (
-    <main data-theme={colorMode} className="ide-shell flex h-screen min-h-0 flex-col overflow-hidden lg:flex-row">
+    <main data-theme={colorMode} className="ide-shell studio-shell flex h-screen min-h-0 flex-col overflow-hidden lg:flex-row">
       <EditorSidebar colorMode={colorMode} onToggleColorMode={() => setColorMode((mode) => mode === "dark" ? "light" : "dark")} messages={messages} history={history} isProcessing={isProcessing} prompt={prompt} onPromptChange={setPrompt} autoMode={autoMode} onToggleAutoMode={() => setAutoMode((value) => !value)} onSubmit={handleSend} />
       <section className="ide-workspace flex-1 min-h-0 overflow-hidden">
         <div className="flex h-full flex-col">
           <EditorToolbar viewMode={viewMode} onViewModeChange={setViewMode} onOpenPreview={openPreview} editorTab={editorTab} onEditorTabChange={setEditorTab} device={device} onDeviceChange={setDevice} />
-          <div ref={viewportRef} className="editor-viewport flex-1 min-h-0 overflow-auto cursor-grab">
+          <div ref={viewportRef} className="editor-viewport studio-viewport flex-1 min-h-0 overflow-auto cursor-grab">
             <PreviewDashboard visible={viewMode === "dashboard"} website={websiteJSON} aiActions={history.length} onWebsiteChange={setWebsiteJSON} />
             {editorTab==="design"&&<aside className="editor-control-drawer"><DesignPresetPanel website={websiteJSON} onChange={setWebsiteJSON}/></aside>}
             {editorTab==="theme"&&<aside className="editor-control-drawer"><ThemePanel website={websiteJSON} onChange={setWebsiteJSON}/></aside>}

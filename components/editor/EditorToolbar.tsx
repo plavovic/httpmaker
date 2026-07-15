@@ -1,1 +1,20 @@
-import type{ViewMode}from"@/types/website";export type EditorTab="ai"|"layers"|"design"|"theme"|"properties";export type DeviceMode="desktop"|"tablet"|"mobile";type Props={viewMode:ViewMode;onViewModeChange:(mode:ViewMode)=>void;onOpenPreview:()=>void;editorTab:EditorTab;onEditorTabChange:(tab:EditorTab)=>void;device:DeviceMode;onDeviceChange:(device:DeviceMode)=>void};export default function EditorToolbar(p:Props){return <header className="flex flex-wrap items-center justify-between gap-2 border px-3 py-2"><div className="flex items-center">{(["ai","layers","design","theme","properties"]as EditorTab[]).map(tab=><button type="button" key={tab} onClick={()=>p.onEditorTabChange(tab)} className={p.editorTab===tab?"active-tab":""}>{tab}</button>)}</div><div className="flex items-center gap-2"><select aria-label="Device preview" value={p.device} onChange={e=>p.onDeviceChange(e.target.value as DeviceMode)}>{(["desktop","tablet","mobile"]as DeviceMode[]).map(x=><option key={x}>{x}</option>)}</select>{(["preview","dashboard","edit"]as ViewMode[]).map(mode=><button type="button" key={mode} onClick={()=>p.onViewModeChange(mode)} className={p.viewMode===mode?"active-tab":""}>{mode}</button>)}<button type="button" onClick={p.onOpenPreview}>Open full preview ↗</button><button type="button" className="publish-button px-3 py-2">Publish</button></div></header>}
+import EditorTabs from "@/components/editor/EditorTabs";
+import type { ViewMode } from "@/types/website";
+
+export type EditorTab = "ai" | "layers" | "design" | "theme" | "properties";
+export type DeviceMode = "desktop" | "tablet" | "mobile";
+
+type Props = { viewMode: ViewMode; onViewModeChange: (mode: ViewMode) => void; onOpenPreview: () => void; editorTab: EditorTab; onEditorTabChange: (tab: EditorTab) => void; device: DeviceMode; onDeviceChange: (device: DeviceMode) => void };
+
+export default function EditorToolbar(props: Props) {
+  return <header className="studio-toolbar">
+    <div className="studio-project"><div className="studio-project-mark">H</div><div><div className="studio-project-path"><span>Projects</span><b>/</b> Untitled site</div><div className="studio-save-state"><i /> All changes saved</div></div></div>
+    <div className="studio-panel-nav"><EditorTabs value={props.editorTab} onChange={props.onEditorTabChange} /></div>
+    <div className="studio-actions">
+      <div className="studio-device-switch" aria-label="Preview device">{(["desktop", "tablet", "mobile"] as DeviceMode[]).map((device) => <button type="button" key={device} title={`${device} preview`} aria-label={`${device} preview`} className={props.device === device ? "selected" : ""} onClick={() => props.onDeviceChange(device)}><span className={`device-icon device-icon-${device}`} /></button>)}</div>
+      <div className="studio-view-switch">{(["preview", "edit", "dashboard"] as ViewMode[]).map((mode) => <button type="button" key={mode} onClick={() => props.onViewModeChange(mode)} className={props.viewMode === mode ? "selected" : ""}>{mode}</button>)}</div>
+      <button type="button" className="studio-preview-button" onClick={props.onOpenPreview} title="Open full preview">↗</button>
+      <button type="button" className="studio-publish-button"><span>Publish</span><b>⌄</b></button>
+    </div>
+  </header>;
+}
