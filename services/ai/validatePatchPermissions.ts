@@ -1,4 +1,4 @@
-import { isContentProperty, isSupportedSectionType, isSupportedVariant } from "@/services/ai/builderCapabilities";
+import { isContentProperty, isEditableProperty, isSupportedSectionType, isSupportedVariant } from "@/services/ai/builderCapabilities";
 import { aiModePermissions } from "@/services/ai/permissions";
 import type { AiRequest } from "@/types/ai";
 import type { WebsiteDesignPatch } from "@/types/designPatch";
@@ -28,6 +28,9 @@ export function validatePatchPermissions(request: AiRequest, patch: WebsiteDesig
     seenUpdates.add(update.sectionId);
     if (permission.restrictUpdatesToSelectedSection && update.sectionId !== request.selectedSectionId) addViolation(`${path}.sectionId`, `Updates are restricted to selected section ${request.selectedSectionId ?? "(none)"}.`);
     if (section && update.variant && !isSupportedVariant(section.type, update.variant)) addViolation(`${path}.variant`, `Variant ${update.variant} is not supported for ${section.type}.`);
+    for (const property of Object.keys(update.props ?? {})) {
+      if (section && !isEditableProperty(section.type, property)) addViolation(`${path}.props.${property}`, `${property} is not editable for ${section.type}.`);
+    }
     if (permission.contentOnly) {
       if (update.variant) addViolation(`${path}.variant`, "Content-only mode cannot change section variants.");
       for (const property of Object.keys(update.props ?? {})) {

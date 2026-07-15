@@ -19,6 +19,7 @@ export function runStage2DeterministicTests(): DeterministicTestResult {
     { name: "rewrite-content allows selected content", passes: () => validatePatchPermissions(request("rewrite-content", selectedSectionId), contentPatch).success },
     { name: "rewrite-content rejects theme", passes: () => !validatePatchPermissions(request("rewrite-content", selectedSectionId), themePatch).success },
     { name: "rewrite-content rejects another section", passes: () => !validatePatchPermissions(request("rewrite-content", selectedSectionId), { sectionUpdates: [{ sectionId: initialWebsite.sections[0].id, props: { title: "No" } }] }).success },
+    { name: "all modes reject properties not editable for the section type", passes: () => !validatePatchPermissions(request("edit-selected-section", selectedSectionId), { sectionUpdates: [{ sectionId: selectedSectionId, props: { items: ["Not editable on hero"] } }] }).success },
     { name: "restyle allows theme", passes: () => validatePatchPermissions(request("restyle-website"), themePatch).success },
     { name: "restyle rejects additions", passes: () => !validatePatchPermissions(request("restyle-website"), addPatch).success },
     { name: "add-section allows additions", passes: () => validatePatchPermissions(request("add-section"), addPatch).success },

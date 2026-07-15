@@ -16,6 +16,7 @@ export function getSectionCapability(sectionType: WebsiteSection["type"]): Build
 export function isSupportedSectionType(sectionType: string): sectionType is WebsiteSection["type"] { return Object.prototype.hasOwnProperty.call(builderCapabilities.sectionTypes, sectionType) }
 export function isSupportedVariant(sectionType: WebsiteSection["type"], variant: string): boolean { return getSectionCapability(sectionType)?.variants.includes(variant) ?? false }
 export function isSupportedAnimation(animation: string): boolean { return builderCapabilities.animations.includes(animation) }
+export function isEditableProperty(sectionType: WebsiteSection["type"], property: string): boolean { return getSectionCapability(sectionType)?.editableProperties.includes(property) ?? false }
 export function isContentProperty(sectionType: WebsiteSection["type"], property: string): boolean { return getSectionCapability(sectionType)?.contentProperties.includes(property) ?? false }
 
 export function validateBuilderCapabilities(): string[] {
