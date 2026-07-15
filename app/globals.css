@@ -51,7 +51,7 @@ body {
 .activity-item.active::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 2px; background: var(--vscode-blue); }
 .activity-spacer { flex: 1; }
 
-.ide-sidebar { flex: 0 0 auto; min-width: 240px; min-height: 0; background: var(--vscode-sidebar) !important; border-color: var(--vscode-border) !important; }
+.ide-sidebar { flex: 0 0 auto; min-width: 320px; min-height: 0; background: var(--vscode-sidebar) !important; border-color: var(--vscode-border) !important; }
 .sidebar-resizer { position: absolute; z-index: 50; inset: 0 -4px 0 auto; width: 8px; cursor: col-resize; touch-action: none; }
 .sidebar-resizer:hover, .sidebar-resizer.active { background: var(--vscode-blue); opacity: .65; }
 .ide-sidebar > div { border-color: var(--vscode-border) !important; background: transparent !important; }
@@ -443,7 +443,7 @@ body {
 .studio-shell .ide-sidebar { border-right: 1px solid var(--studio-line) !important; background: #151517 !important; }
 .studio-shell .ide-sidebar > div:first-child { min-height: 68px; padding: 0 18px !important; border-bottom: 1px solid var(--studio-line) !important; }
 .studio-shell .brand-title { color: var(--studio-text) !important; font-size: 15px !important; font-weight: 750; letter-spacing: -.025em; }
-.studio-shell .brand-title::before { content: "✦"; display: inline-grid; place-items: center; width: 27px; height: 27px; margin-right: 9px; border-radius: 8px; background: linear-gradient(145deg,var(--studio-accent),var(--studio-accent-2)); color: #fff; font-size: 12px; box-shadow: 0 7px 20px rgba(124,92,229,.3); vertical-align: -1px; }
+.studio-shell .ai-chat-header .brand-title { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-42%); }
 .studio-shell .history-toggle,.studio-shell .theme-toggle { height: 30px; border: 1px solid var(--studio-line) !important; border-radius: 8px !important; padding: 0 10px; background: var(--studio-raised) !important; color: var(--studio-muted) !important; }
 .studio-shell .theme-toggle { width: 30px; padding: 0; }
 .studio-shell .chat-thread { padding: 20px 16px !important; background: linear-gradient(180deg,#151517,#18181b) !important; }
@@ -463,6 +463,9 @@ body {
 .studio-toolbar { position: relative; z-index: 40; display: grid; grid-template-columns: minmax(190px,1fr) auto minmax(370px,1fr); align-items: center; min-height: 68px !important; padding: 0 16px !important; border: 0 !important; border-bottom: 1px solid var(--studio-line) !important; background: rgba(21,21,23,.94) !important; backdrop-filter: blur(20px); box-shadow: 0 10px 35px rgba(0,0,0,.18) !important; }
 .studio-project { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .studio-project-mark { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid var(--studio-line-strong); border-radius: 9px; background: linear-gradient(145deg,#29272f,#1e1d22); color: #c4b5fd; font-size: 13px; font-weight: 800; }
+.studio-project-divider { width: 1px; height: 25px; margin-left: 3px; background: var(--studio-line-strong); box-shadow: 1px 0 rgba(255,255,255,.025); }
+.studio-toolbar .studio-theme-toggle { display: grid; place-items: center; width: 34px; min-width: 34px; min-height: 34px; padding: 0; border: 1px solid var(--studio-line) !important; border-radius: 9px !important; background: var(--studio-raised) !important; color: var(--studio-muted); font-size: 15px; }
+.studio-toolbar .studio-theme-toggle:hover { color: var(--studio-text) !important; background: var(--studio-hover) !important; }
 .studio-project-path { overflow: hidden; color: var(--studio-text); font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .studio-project-path span,.studio-project-path b { margin-right: 6px; color: var(--studio-muted); font-weight: 450; }
 .studio-save-state { display: flex; align-items: center; gap: 5px; margin-top: 3px; color: #77747f; font-size: 10px; }
@@ -498,6 +501,98 @@ body {
 .studio-shell[data-theme="light"] .chat-composer,.studio-shell[data-theme="light"] .chat-message>p { background:#fff !important; }
 .studio-shell[data-theme="light"] .studio-device-switch,.studio-shell[data-theme="light"] .studio-view-switch,.studio-shell[data-theme="light"] .editor-tabs { background:#f0eef4; }
 .studio-shell[data-theme="light"] .studio-viewport { background-color:#e8e7ec !important; background-image:radial-gradient(rgba(33,29,41,.11) .65px,transparent .65px),radial-gradient(circle at 50% 0,rgba(124,92,229,.08),transparent 42%) !important; }
+
+/* Light studio surfaces must not inherit the legacy dark editor chrome. */
+.studio-body { min-width: 0; }
+.studio-shell[data-theme="light"] .ide-sidebar { border-color: var(--studio-line) !important; }
+.studio-shell[data-theme="light"] .ide-sidebar > div { border-color: var(--studio-line) !important; }
+.studio-shell[data-theme="light"] .ide-sidebar > div:has(.chat-composer) { background: #faf9fc !important; border-color: var(--studio-line) !important; }
+.studio-shell[data-theme="light"] .chat-composer {
+  border-color: var(--studio-line-strong) !important;
+  box-shadow: 0 12px 28px rgba(43,35,59,.08), inset 0 1px rgba(255,255,255,.9) !important;
+}
+.studio-shell[data-theme="light"] .chat-composer:focus-within { border-color: rgba(124,92,229,.55) !important; box-shadow: 0 0 0 3px rgba(124,92,229,.09),0 12px 28px rgba(43,35,59,.08) !important; }
+.studio-shell[data-theme="light"] .chat-message > p { border-color: var(--studio-line) !important; color: var(--studio-text) !important; box-shadow: 0 5px 18px rgba(43,35,59,.06); }
+.studio-shell[data-theme="light"] .chat-message-user > p { border-color: rgba(124,92,229,.24) !important; background: #f0ebff !important; }
+.studio-shell[data-theme="light"] .history-toggle,
+.studio-shell[data-theme="light"] .theme-toggle,
+.studio-shell[data-theme="light"] .composer-icon { border-color: var(--studio-line) !important; background: #fff !important; color: var(--studio-muted) !important; }
+.studio-shell[data-theme="light"] .auto-mode-toggle { background: #eee9ff !important; color: #6345c4 !important; }
+.studio-shell[data-theme="light"] .chat-composer button[type="submit"] { border-color: #211d29 !important; background: #211d29 !important; color: #fff !important; }
+.studio-shell[data-theme="light"] .history-drawer { background: #fff !important; color: var(--studio-text); box-shadow: 18px 0 45px rgba(43,35,59,.14); }
+.studio-shell[data-theme="light"] .history-drawer > div:first-child,
+.studio-shell[data-theme="light"] .history-drawer > p { border-color: var(--studio-line) !important; background: #fff !important; }
+.studio-shell[data-theme="light"] .history-drawer > div:nth-child(2) { background: #fff !important; }
+.studio-shell[data-theme="light"] .history-prompt { color: var(--studio-text); }
+.studio-shell[data-theme="light"] .history-prompt:hover { border-color: rgba(124,92,229,.2) !important; background: #f5f2fb !important; color: #4f36a8 !important; }
+.studio-shell[data-theme="light"] .studio-project-mark { border-color: var(--studio-line); background: linear-gradient(145deg,#fff,#f0edf6); color: #6d4fd0; box-shadow: 0 3px 12px rgba(43,35,59,.08); }
+.studio-shell[data-theme="light"] .studio-theme-toggle { border-color: var(--studio-line) !important; background: #fff !important; color: #5f5669; box-shadow: 0 2px 8px rgba(43,35,59,.08); }
+
+/* Light-mode navigation and editor menus. */
+.studio-shell[data-theme="light"] .editor-tabs-option span { color: #655f6d; }
+.studio-shell[data-theme="light"] .editor-tabs-option:hover span { color: #2b2632; }
+.studio-shell[data-theme="light"] .editor-tabs-option input:checked + span { color: #33284d; }
+.studio-shell[data-theme="light"] .studio-toolbar .studio-device-switch button,
+.studio-shell[data-theme="light"] .studio-toolbar .studio-view-switch button { color: #655f6d; }
+.studio-shell[data-theme="light"] .studio-toolbar .studio-device-switch button:hover,
+.studio-shell[data-theme="light"] .studio-toolbar .studio-view-switch button:hover { color: #2b2632 !important; }
+.studio-shell[data-theme="light"] .studio-toolbar .studio-device-switch button.selected,
+.studio-shell[data-theme="light"] .studio-toolbar .studio-view-switch button.selected { background: #fff !important; color: #6044bd !important; box-shadow: 0 2px 7px rgba(43,35,59,.12); }
+.studio-shell[data-theme="light"] .editor-control-drawer {
+  border-color: var(--studio-line-strong) !important;
+  background: rgba(255,255,255,.98) !important;
+  color: #2b2632 !important;
+  box-shadow: 0 24px 60px rgba(43,35,59,.16);
+}
+.studio-shell[data-theme="light"] .editor-control-drawer h2,
+.studio-shell[data-theme="light"] .editor-control-drawer h3,
+.studio-shell[data-theme="light"] .editor-control-drawer label,
+.studio-shell[data-theme="light"] .editor-control-drawer p { color: #2b2632; }
+.studio-shell[data-theme="light"] .editor-panel > p { color: #6f6877; }
+.studio-shell[data-theme="light"] .editor-panel h3 { color: #6044bd; }
+.studio-shell[data-theme="light"] .editor-control-drawer button {
+  border-color: #d8d2df;
+  background: #fff;
+  color: #332e3a;
+}
+.studio-shell[data-theme="light"] .editor-control-drawer button:hover { border-color: #9b87d8; background: #f4f0ff; color: #4f36a8; }
+.studio-shell[data-theme="light"] .editor-panel input:not([type="color"]),
+.studio-shell[data-theme="light"] .editor-panel select,
+.studio-shell[data-theme="light"] .editor-control-drawer > div:not(.editor-panel) input {
+  border-color: #d8d2df;
+  background: #faf9fc;
+  color: #2b2632;
+}
+.studio-shell[data-theme="light"] .editor-panel select option { background: #fff; color: #2b2632; }
+.studio-shell[data-theme="light"] .preset-card { border-color: #ded9e5; background: #fff; color: #2b2632; }
+.studio-shell[data-theme="light"] .preset-card.selected { border-color: #7659cf; box-shadow: 0 0 0 1px rgba(118,89,207,.2),0 12px 28px rgba(43,35,59,.1); }
+.studio-shell[data-theme="light"] .preset-dialog { border-color: #d8d2df; background: #fff; color: #2b2632; box-shadow: 0 24px 70px rgba(43,35,59,.2); }
+
+/* Edit-mode controls follow the editor theme, independently of the website colors. */
+.studio-shell[data-theme="light"] .section-floating-controls {
+  border-color: #d8d2df;
+  background: rgba(255,255,255,.98);
+  color: #2b2632;
+  box-shadow: 0 12px 30px rgba(43,35,59,.14);
+}
+.studio-shell[data-theme="light"] .section-floating-controls button { border: 1px solid transparent; background: transparent; color: #403949; }
+.studio-shell[data-theme="light"] .section-floating-controls button:hover { border-color: #c9bee8; background: #f2edff; color: #5138a7; }
+.studio-shell[data-theme="light"] .section-floating-controls button:last-child:hover { border-color: #efb8bd; background: #fff0f1; color: #b42330; }
+.studio-shell[data-theme="light"] .section-drag-handle { color: #756d7e; }
+.studio-shell[data-theme="light"] .element-toolbar,
+.studio-shell[data-theme="light"] .element-toolbar-light,
+.studio-shell[data-theme="light"] .element-toolbar-dark {
+  border-color: #cec7d8;
+  background: #fff;
+  color: #2b2632;
+  box-shadow: 0 16px 42px rgba(43,35,59,.18);
+}
+.studio-shell[data-theme="light"] .element-toolbar button,
+.studio-shell[data-theme="light"] .element-toolbar select,
+.studio-shell[data-theme="light"] .element-toolbar input { border-color: #d8d2df; background: #faf9fc; color: #2b2632; }
+.studio-shell[data-theme="light"] .element-toolbar button:hover,
+.studio-shell[data-theme="light"] .element-toolbar button.active { border-color: #917bd0; background: #eee9ff; color: #5138a7; }
+.studio-shell[data-theme="light"] .element-toolbar select option { background: #fff; color: #2b2632; }
 
 @media(max-width:1280px){.studio-toolbar{grid-template-columns:auto 1fr auto}.studio-project>div:last-child{display:none}.studio-panel-nav{justify-self:start;margin-left:10px}.studio-view-switch{display:none}}
 @media(max-width:900px){.studio-toolbar{display:flex;overflow-x:auto}.studio-project{display:none}.studio-panel-nav{margin:0}.studio-actions{margin-left:auto}.studio-shell .editor-tabs{min-width:360px}.studio-viewport{padding:20px!important}}
