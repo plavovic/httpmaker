@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "test:ai-stage2": "node scripts/run-stage2-tests.cjs",
     "start": "next start"
   },
   "dependencies": {
