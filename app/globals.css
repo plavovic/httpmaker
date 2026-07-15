@@ -88,10 +88,22 @@ body {
 .editor-viewport > div:first-child:not(:last-child) > div { border: 1px solid var(--vscode-border) !important; border-radius: 3px !important; background: var(--vscode-panel) !important; color: var(--vscode-text) !important; }
 .preview-section { margin-bottom: 8px !important; border-radius: 3px !important; padding: 4px !important; }
 .preview-section:hover { border-color: var(--vscode-border) !important; }
-.section-floating-controls { position: absolute; z-index: 20; right: 10px; top: 10px; display: flex; align-items: center; gap: 4px; border: 1px solid var(--vscode-border); border-radius: 10px; padding: 5px; background: var(--vscode-panel); color: var(--vscode-text); box-shadow: 0 10px 28px rgba(0,0,0,.24); }
-.section-floating-controls button { padding: 5px 8px !important; font-size: 10px; }
-.section-drag-handle { cursor: grab; padding: 5px 7px; user-select: none; }
+.section-floating-controls { position: absolute; z-index: 20; right: 12px; top: 12px; display: flex; align-items: center; gap: 3px; border: 1px solid rgba(255,255,255,.12); border-radius: 11px; padding: 4px; background: rgba(24,23,28,.94); color: #e8e4ef; box-shadow: 0 14px 38px rgba(0,0,0,.35); backdrop-filter: blur(18px); }
+.section-floating-controls button { min-height: 30px; padding: 5px 9px !important; border: 0 !important; border-radius: 7px !important; background: transparent !important; color: inherit; font-size: 10px; }
+.section-floating-controls button:hover { background: rgba(255,255,255,.08) !important; }
+.section-drag-handle { cursor: grab; padding: 5px 7px; color: #8e8799; font-size: 16px; line-height: 1; user-select: none; }
 .section-drag-handle:active { cursor: grabbing; }
+.section-variant-button { display:flex; align-items:center; gap:6px; text-transform:capitalize; }
+.section-control-dot { width:6px; height:6px; border-radius:50%; background:#a78bfa; box-shadow:0 0 9px rgba(167,139,250,.75); }
+.section-more-wrap { position:relative; }
+.section-more-button { width:31px; padding:0 !important; letter-spacing:1px; }
+.section-action-menu { position:absolute; top:38px; right:-4px; width:204px; padding:6px; border:1px solid rgba(255,255,255,.12); border-radius:12px; background:rgba(24,23,28,.98); box-shadow:0 20px 55px rgba(0,0,0,.45); backdrop-filter:blur(20px); animation:section-menu-in .14s ease-out; }
+.section-action-menu button { display:grid; grid-template-columns:25px 1fr; align-items:center; width:100%; padding:9px !important; text-align:left; }
+.section-action-menu button>span:first-child { color:#a78bfa; font-size:17px; }
+.section-action-menu b,.section-action-menu small { display:block; }.section-action-menu b { font-size:11px; }.section-action-menu small { margin-top:2px; color:#85808e; font-size:9px; font-weight:400; }
+.section-action-menu button.danger:hover { background:rgba(244,63,94,.12) !important; color:#fda4af; }.section-action-menu button.danger>span:first-child { color:#fb7185; }
+.section-menu-divider { height:1px; margin:4px 5px; background:rgba(255,255,255,.08); }
+@keyframes section-menu-in { from { opacity:0; transform:translateY(-5px) scale(.97) } to { opacity:1; transform:none } }
 .preview-section[class*="border-blue"] { border-color: var(--vscode-blue) !important; box-shadow: 0 0 0 1px rgba(130,170,255,.16) !important; }
 
 .status-bar { position: fixed; z-index: 40; inset: auto 0 0; height: 23px; display: flex; align-items: center; gap: 17px; overflow: hidden; padding: 0 10px; border-top: 1px solid #4b78bb; background: #0b4f84; color: #eef7ff; font-size: 11px; white-space: nowrap; }
@@ -476,6 +488,10 @@ body {
 .studio-shell .editor-tabs-option span { min-height: 31px; color: #77747f; font-size: 11px; }
 .studio-shell .editor-tabs-option input:checked + span { color: #ddd7eb; }
 .studio-actions { display: flex; justify-self: end; align-items: center; gap: 7px; }
+.studio-history-controls { display:flex; gap:2px; padding:3px; border:1px solid var(--studio-line); border-radius:9px; background:#101012; }
+.studio-toolbar .studio-history-controls button { display:grid; place-items:center; width:29px; min-height:29px; padding:0; border:0 !important; border-radius:6px !important; background:transparent !important; color:var(--studio-muted); font-size:17px; }
+.studio-toolbar .studio-history-controls button:hover:not(:disabled) { background:var(--studio-raised) !important; color:#c4b5fd; }
+.studio-toolbar .studio-history-controls button:disabled { opacity:.28; cursor:not-allowed; }
 .studio-device-switch,.studio-view-switch { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--studio-line); border-radius: 9px; background: #101012; }
 .studio-toolbar .studio-device-switch button,.studio-toolbar .studio-view-switch button { display: grid; place-items: center; min-width: 30px; min-height: 29px; padding: 0 8px; border: 0; border-radius: 6px !important; background: transparent !important; color: #77747f; }
 .studio-toolbar .studio-view-switch button { min-width: 0; padding: 0 8px; font-size: 10px; text-transform: capitalize; }
@@ -506,7 +522,7 @@ body {
 .studio-shell[data-theme="light"] .studio-toolbar { background:rgba(255,255,255,.9) !important; }
 .studio-shell[data-theme="light"] .chat-thread { background:linear-gradient(180deg,#faf9fc,#f5f3f8) !important; }
 .studio-shell[data-theme="light"] .chat-composer,.studio-shell[data-theme="light"] .chat-message>p { background:#fff !important; }
-.studio-shell[data-theme="light"] .studio-device-switch,.studio-shell[data-theme="light"] .studio-view-switch,.studio-shell[data-theme="light"] .editor-tabs { background:#f0eef4; }
+.studio-shell[data-theme="light"] .studio-device-switch,.studio-shell[data-theme="light"] .studio-view-switch,.studio-shell[data-theme="light"] .studio-history-controls,.studio-shell[data-theme="light"] .editor-tabs { background:#f0eef4; }
 .studio-shell[data-theme="light"] .studio-viewport { background-color:#e8e7ec !important; background-image:radial-gradient(rgba(33,29,41,.11) .65px,transparent .65px),radial-gradient(circle at 50% 0,rgba(124,92,229,.08),transparent 42%) !important; }
 
 /* Light studio surfaces must not inherit the legacy dark editor chrome. */
@@ -585,6 +601,8 @@ body {
 .studio-shell[data-theme="light"] .section-floating-controls button { border: 1px solid transparent; background: transparent; color: #403949; }
 .studio-shell[data-theme="light"] .section-floating-controls button:hover { border-color: #c9bee8; background: #f2edff; color: #5138a7; }
 .studio-shell[data-theme="light"] .section-floating-controls button:last-child:hover { border-color: #efb8bd; background: #fff0f1; color: #b42330; }
+.studio-shell[data-theme="light"] .section-action-menu { border-color:#d8d2df; background:rgba(255,255,255,.99); box-shadow:0 18px 45px rgba(43,35,59,.18); }
+.studio-shell[data-theme="light"] .section-menu-divider { background:#e8e3ec; }
 .studio-shell[data-theme="light"] .section-drag-handle { color: #756d7e; }
 .studio-shell[data-theme="light"] .element-toolbar,
 .studio-shell[data-theme="light"] .element-toolbar-light,

@@ -12,9 +12,10 @@ import WebsiteRenderer from "@/renderer/WebsiteRenderer";
 import type { ColorMode, EditableElementKey, EditableElementStyle, EditorSelection, ViewMode, WebsiteJSON } from "@/types/website";
 import { applyPromptCommand } from "@/utils/applyPromptCommand";
 import { EDITOR_THEME_STORAGE_KEY, readStoredEditorTheme, readStoredWebsite, WEBSITE_STORAGE_KEY } from "@/utils/editorStorage";
+import { useWebsiteHistory } from "@/hooks/useWebsiteHistory";
 
 export default function EditorPage() {
-  const [websiteJSON, setWebsiteJSON] = useState<WebsiteJSON>(initialWebsite);
+  const { website: websiteJSON, setWebsite: setWebsiteJSON, replaceWebsite, undo, redo, canUndo, canRedo } = useWebsiteHistory(initialWebsite);
   const [selection, setSelection] = useState<EditorSelection>({ sectionId: initialWebsite.sections[1].id });
   const [viewMode, setViewMode] = useState<ViewMode>("preview");
   const [prompt, setPrompt] = useState("");
@@ -31,10 +32,20 @@ export default function EditorPage() {
 
   useEffect(() => {
     const storedWebsite = readStoredWebsite();
-    if (storedWebsite) setWebsiteJSON(storedWebsite);
+    if (storedWebsite) replaceWebsite(storedWebsite);
     setColorMode(readStoredEditorTheme());
     setStorageReady(true);
-  }, []);
+  }, [replaceWebsite]);
+
+  useEffect(() => {
+    const handleHistoryShortcut = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey || event.key.toLowerCase() !== "z") return;
+      event.preventDefault();
+      if (event.shiftKey) redo(); else undo();
+    };
+    window.addEventListener("keydown", handleHistoryShortcut);
+    return () => window.removeEventListener("keydown", handleHistoryShortcut);
+  }, [redo, undo]);
 
   useEffect(() => {
     if (!storageReady) return;
@@ -106,11 +117,18 @@ export default function EditorPage() {
     };
   }, []);
 
-  const updateElement = (sectionId: string, elementKey: EditableElementKey, value: string) => setWebsiteJSON((current) => ({ ...current, sections: current.sections.map((section) => section.id !== sectionId ? section : elementKey.startsWith("content.") ? { ...section, content: { ...section.content, [elementKey]: value } } : { ...section, props: { ...section.props, [elementKey]: value } }) }));
-  const updateElementStyle = (sectionId: string, elementKey: EditableElementKey, patch: Partial<EditableElementStyle>) => setWebsiteJSON((current) => ({ ...current, sections: current.sections.map((section) => section.id === sectionId ? { ...section, elementStyles: { ...section.elementStyles, [elementKey]: { ...section.elementStyles?.[elementKey], ...patch } } } : section) }));
-  const updateElementLink = (sectionId: string, elementKey: EditableElementKey, value: string) => setWebsiteJSON((current) => ({ ...current, sections: current.sections.map((section) => section.id === sectionId ? { ...section, elementLinks: { ...section.elementLinks, [elementKey]: value } } : section) }));
-  const removeSection = (sectionId: string) => setWebsiteJSON((current) => ({ ...current, sections: current.sections.filter((section) => section.id !== sectionId) }));
-  const duplicateSection = (sectionId: string) => setWebsiteJSON((current) => { const index=current.sections.findIndex((section)=>section.id===sectionId);if(index<0)return current;const copy={...current.sections[index],id:`${current.sections[index].type}-${crypto.randomUUID()}`,props:{...current.sections[index].props}};const sections=[...current.sections];sections.splice(index+1,0,copy);setSelection({sectionId:copy.id});return {...current,sections}; });
+  const updateElement = (sectionId: string, elementKey: EditableElementKey, value: string) => setWebsiteJSON((current) => ({ ...current, sections: current.sections.map((section) => section.id !== sectionId ? section : elementKey.startsWith("content.") ? { ...section, content: { ...section.content, [elementKey]: value } } : { ...section, props: { ...section.props, [elementKey]: value } }) }), `content:${sectionId}:${elementKey}`);
+  const updateElementStyle = (sectionId: string, elementKey: EditableElementKey, patch: Partial<EditableElementStyle>) => setWebsiteJSON((current) => ({ ...current, sections: current.sections.map((section) => section.id === sectionId ? { ...section, elementStyles: { ...section.elementStyles, [elementKey]: { ...section.elementStyles?.[elementKey], ...patch } } } : section) }), `style:${sectionId}:${elementKey}:${Object.keys(patch).sort().join(",")}`);
+  const updateElementLink = (sectionId: string, elementKey: EditableElementKey, value: string) => setWebsiteJSON((current) => ({ ...current, sections: current.sections.map((section) => section.id === sectionId ? { ...section, elementLinks: { ...section.elementLinks, [elementKey]: value } } : section) }), `link:${sectionId}:${elementKey}`);
+  const removeSection = (sectionId: string) => setWebsiteJSON((current) => {
+    const index = current.sections.findIndex((section) => section.id === sectionId);
+    if (index < 0) return current;
+    const sections = current.sections.filter((section) => section.id !== sectionId);
+    const fallback = sections[Math.min(index, sections.length - 1)];
+    if (fallback) setSelection({ sectionId: fallback.id });
+    return { ...current, sections };
+  });
+  const duplicateSection = (sectionId: string) => setWebsiteJSON((current) => { const index=current.sections.findIndex((section)=>section.id===sectionId);if(index<0)return current;const source=current.sections[index];const copy={...source,id:`${source.type}-${crypto.randomUUID()}`,props:{...source.props},content:source.content?{...source.content}:undefined,elementStyles:source.elementStyles?structuredClone(source.elementStyles):undefined,elementLinks:source.elementLinks?{...source.elementLinks}:undefined};const sections=[...current.sections];sections.splice(index+1,0,copy);setSelection({sectionId:copy.id});return {...current,sections}; });
   const changeVariant = (sectionId: string, variant: "luxury"|"brutalist") => setWebsiteJSON((current)=>({...current,sections:current.sections.map((section)=>section.id===sectionId?{...section,variant}:section)}));
   const moveSection = (sourceId:string,targetId:string)=>setWebsiteJSON((current)=>{const from=current.sections.findIndex(s=>s.id===sourceId);const to=current.sections.findIndex(s=>s.id===targetId);if(from<0||to<0||from===to)return current;const sections=[...current.sections];const [moved]=sections.splice(from,1);sections.splice(to,0,moved);return {...current,sections}});
 
@@ -139,7 +157,7 @@ export default function EditorPage() {
 
   return (
     <main data-theme={colorMode} className="ide-shell studio-shell flex h-screen min-h-0 flex-col overflow-hidden">
-      <EditorToolbar colorMode={colorMode} onToggleColorMode={() => setColorMode((mode) => mode === "dark" ? "light" : "dark")} viewMode={viewMode} onViewModeChange={setViewMode} onOpenPreview={openPreview} editorTab={editorTab} onEditorTabChange={setEditorTab} device={device} onDeviceChange={setDevice} />
+      <EditorToolbar colorMode={colorMode} onToggleColorMode={() => setColorMode((mode) => mode === "dark" ? "light" : "dark")} viewMode={viewMode} onViewModeChange={setViewMode} onOpenPreview={openPreview} editorTab={editorTab} onEditorTabChange={setEditorTab} device={device} onDeviceChange={setDevice} canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
       <div className="studio-body flex min-h-0 flex-1">
         <EditorSidebar messages={messages} history={history} isProcessing={isProcessing} prompt={prompt} onPromptChange={setPrompt} autoMode={autoMode} onToggleAutoMode={() => setAutoMode((value) => !value)} onSubmit={handleSend} />
         <section className="ide-workspace flex-1 min-h-0 overflow-hidden">
