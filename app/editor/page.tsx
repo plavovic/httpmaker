@@ -15,7 +15,7 @@ import { EDITOR_THEME_STORAGE_KEY, readStoredEditorTheme, readStoredWebsite, WEB
 import { useWebsiteHistory } from "@/hooks/useWebsiteHistory";
 
 export default function EditorPage() {
-  const { website: websiteJSON, setWebsite: setWebsiteJSON, replaceWebsite, undo, redo, canUndo, canRedo } = useWebsiteHistory(initialWebsite);
+  const { website: websiteJSON, setWebsite: setWebsiteJSON, replaceWebsite, undo, redo, canUndo, canRedo, undoLabel, redoLabel } = useWebsiteHistory(initialWebsite);
   const [selection, setSelection] = useState<EditorSelection>({ sectionId: initialWebsite.sections[1].id });
   const [viewMode, setViewMode] = useState<ViewMode>("preview");
   const [prompt, setPrompt] = useState("");
@@ -39,13 +39,30 @@ export default function EditorPage() {
 
   useEffect(() => {
     const handleHistoryShortcut = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey) || event.altKey || event.key.toLowerCase() !== "z") return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.matches("input, textarea, select, [contenteditable]:not([contenteditable='false'])") || target?.closest("[contenteditable]:not([contenteditable='false'])")) return;
+      const key = event.key.toLowerCase();
+      const undoShortcut = (event.ctrlKey || event.metaKey) && !event.shiftKey && key === "z";
+      const redoShortcut = ((event.ctrlKey || event.metaKey) && event.shiftKey && key === "z") || (event.ctrlKey && !event.metaKey && !event.shiftKey && key === "y");
+      if (event.altKey || (!undoShortcut && !redoShortcut)) return;
       event.preventDefault();
-      if (event.shiftKey) redo(); else undo();
+      if (redoShortcut) redo(); else undo();
     };
     window.addEventListener("keydown", handleHistoryShortcut);
     return () => window.removeEventListener("keydown", handleHistoryShortcut);
   }, [redo, undo]);
+
+  useEffect(() => {
+    setSelection((current) => {
+      const section = websiteJSON.sections.find((item) => item.id === current.sectionId);
+      if (!section) return websiteJSON.sections[0] ? { sectionId: websiteJSON.sections[0].id } : current;
+      if (!current.elementKey) return current;
+      const isValidElement = current.elementKey.startsWith("content.")
+        ? Object.prototype.hasOwnProperty.call(section.content ?? {}, current.elementKey)
+        : Object.prototype.hasOwnProperty.call(section.props, current.elementKey);
+      return isValidElement ? current : { sectionId: current.sectionId };
+    });
+  }, [websiteJSON]);
 
   useEffect(() => {
     if (!storageReady) return;
@@ -117,9 +134,9 @@ export default function EditorPage() {
     };
   }, []);
 
-  const updateElement = (sectionId: string, elementKey: EditableElementKey, value: string) => setWebsiteJSON((current) => ({ ...current, sections: current.sections.map((section) => section.id !== sectionId ? section : elementKey.startsWith("content.") ? { ...section, content: { ...section.content, [elementKey]: value } } : { ...section, props: { ...section.props, [elementKey]: value } }) }), `content:${sectionId}:${elementKey}`);
-  const updateElementStyle = (sectionId: string, elementKey: EditableElementKey, patch: Partial<EditableElementStyle>) => setWebsiteJSON((current) => ({ ...current, sections: current.sections.map((section) => section.id === sectionId ? { ...section, elementStyles: { ...section.elementStyles, [elementKey]: { ...section.elementStyles?.[elementKey], ...patch } } } : section) }), `style:${sectionId}:${elementKey}:${Object.keys(patch).sort().join(",")}`);
-  const updateElementLink = (sectionId: string, elementKey: EditableElementKey, value: string) => setWebsiteJSON((current) => ({ ...current, sections: current.sections.map((section) => section.id === sectionId ? { ...section, elementLinks: { ...section.elementLinks, [elementKey]: value } } : section) }), `link:${sectionId}:${elementKey}`);
+  const updateElement = (sectionId: string, elementKey: EditableElementKey, value: string) => setWebsiteJSON((current) => ({ ...current, sections: current.sections.map((section) => section.id !== sectionId ? section : elementKey.startsWith("content.") ? { ...section, content: { ...section.content, [elementKey]: value } } : { ...section, props: { ...section.props, [elementKey]: value } }) }), { label: `Edit ${elementKey.replace("content.", "")}`, group: `content:${sectionId}:${elementKey}` });
+  const updateElementStyle = (sectionId: string, elementKey: EditableElementKey, patch: Partial<EditableElementStyle>) => setWebsiteJSON((current) => ({ ...current, sections: current.sections.map((section) => section.id === sectionId ? { ...section, elementStyles: { ...section.elementStyles, [elementKey]: { ...section.elementStyles?.[elementKey], ...patch } } } : section) }), { label: `Style ${elementKey.replace("content.", "")}`, group: `style:${sectionId}:${elementKey}:${Object.keys(patch).sort().join(",")}` });
+  const updateElementLink = (sectionId: string, elementKey: EditableElementKey, value: string) => setWebsiteJSON((current) => ({ ...current, sections: current.sections.map((section) => section.id === sectionId ? { ...section, elementLinks: { ...section.elementLinks, [elementKey]: value } } : section) }), { label: `Edit ${elementKey.replace("content.", "")} link`, group: `link:${sectionId}:${elementKey}` });
   const removeSection = (sectionId: string) => setWebsiteJSON((current) => {
     const index = current.sections.findIndex((section) => section.id === sectionId);
     if (index < 0) return current;
@@ -127,10 +144,10 @@ export default function EditorPage() {
     const fallback = sections[Math.min(index, sections.length - 1)];
     if (fallback) setSelection({ sectionId: fallback.id });
     return { ...current, sections };
-  });
-  const duplicateSection = (sectionId: string) => setWebsiteJSON((current) => { const index=current.sections.findIndex((section)=>section.id===sectionId);if(index<0)return current;const source=current.sections[index];const copy={...source,id:`${source.type}-${crypto.randomUUID()}`,props:{...source.props},content:source.content?{...source.content}:undefined,elementStyles:source.elementStyles?structuredClone(source.elementStyles):undefined,elementLinks:source.elementLinks?{...source.elementLinks}:undefined};const sections=[...current.sections];sections.splice(index+1,0,copy);setSelection({sectionId:copy.id});return {...current,sections}; });
-  const changeVariant = (sectionId: string, variant: "luxury"|"brutalist") => setWebsiteJSON((current)=>({...current,sections:current.sections.map((section)=>section.id===sectionId?{...section,variant}:section)}));
-  const moveSection = (sourceId:string,targetId:string)=>setWebsiteJSON((current)=>{const from=current.sections.findIndex(s=>s.id===sourceId);const to=current.sections.findIndex(s=>s.id===targetId);if(from<0||to<0||from===to)return current;const sections=[...current.sections];const [moved]=sections.splice(from,1);sections.splice(to,0,moved);return {...current,sections}});
+  }, { label: "Delete section" });
+  const duplicateSection = (sectionId: string) => setWebsiteJSON((current) => { const index=current.sections.findIndex((section)=>section.id===sectionId);if(index<0)return current;const source=current.sections[index];const copy={...source,id:`${source.type}-${crypto.randomUUID()}`,props:{...source.props},content:source.content?{...source.content}:undefined,elementStyles:source.elementStyles?structuredClone(source.elementStyles):undefined,elementLinks:source.elementLinks?{...source.elementLinks}:undefined};const sections=[...current.sections];sections.splice(index+1,0,copy);setSelection({sectionId:copy.id});return {...current,sections}; }, { label: "Duplicate section" });
+  const changeVariant = (sectionId: string, variant: "luxury"|"brutalist") => setWebsiteJSON((current)=>({...current,sections:current.sections.map((section)=>section.id===sectionId?{...section,variant}:section)}), { label: `Change section variant to ${variant}` });
+  const moveSection = (sourceId:string,targetId:string)=>setWebsiteJSON((current)=>{const from=current.sections.findIndex(s=>s.id===sourceId);const to=current.sections.findIndex(s=>s.id===targetId);if(from<0||to<0||from===to)return current;const sections=[...current.sections];const [moved]=sections.splice(from,1);sections.splice(to,0,moved);return {...current,sections}}, { label: "Move section" });
 
   const openPreview = () => {
     localStorage.setItem(WEBSITE_STORAGE_KEY, JSON.stringify(websiteJSON));
@@ -147,7 +164,7 @@ export default function EditorPage() {
     setMessages((current) => [...current, { id, role: "user", text: message }]);
     setHistory((current) => [{ id, prompt: message, createdAt: new Date().toISOString() }, ...current]);
     setTimeout(() => {
-      setWebsiteJSON((current) => applyPromptCommand(current, message, selection.sectionId));
+      setWebsiteJSON((current) => applyPromptCommand(current, message, selection.sectionId), { label: "Apply AI change", source: "ai" });
       setMessages((current) => [...current, { id: `${id}-reply`, role: "assistant", text: "I applied that direction to the live preview." }]);
       setIsProcessing(false);
     }, 700);
@@ -157,15 +174,15 @@ export default function EditorPage() {
 
   return (
     <main data-theme={colorMode} className="ide-shell studio-shell flex h-screen min-h-0 flex-col overflow-hidden">
-      <EditorToolbar colorMode={colorMode} onToggleColorMode={() => setColorMode((mode) => mode === "dark" ? "light" : "dark")} viewMode={viewMode} onViewModeChange={setViewMode} onOpenPreview={openPreview} editorTab={editorTab} onEditorTabChange={setEditorTab} device={device} onDeviceChange={setDevice} canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
+      <EditorToolbar colorMode={colorMode} onToggleColorMode={() => setColorMode((mode) => mode === "dark" ? "light" : "dark")} viewMode={viewMode} onViewModeChange={setViewMode} onOpenPreview={openPreview} editorTab={editorTab} onEditorTabChange={setEditorTab} device={device} onDeviceChange={setDevice} canUndo={canUndo} canRedo={canRedo} undoLabel={undoLabel} redoLabel={redoLabel} onUndo={undo} onRedo={redo} />
       <div className="studio-body flex min-h-0 flex-1">
         <EditorSidebar messages={messages} history={history} isProcessing={isProcessing} prompt={prompt} onPromptChange={setPrompt} autoMode={autoMode} onToggleAutoMode={() => setAutoMode((value) => !value)} onSubmit={handleSend} />
         <section className="ide-workspace flex-1 min-h-0 overflow-hidden">
         <div className="flex h-full flex-col">
           <div ref={viewportRef} className="editor-viewport studio-viewport flex-1 min-h-0 overflow-auto cursor-grab">
-            <PreviewDashboard visible={viewMode === "dashboard"} website={websiteJSON} aiActions={history.length} onWebsiteChange={setWebsiteJSON} />
-            {editorTab==="design"&&<aside className="editor-control-drawer"><DesignPresetPanel website={websiteJSON} onChange={setWebsiteJSON}/></aside>}
-            {editorTab==="theme"&&<aside className="editor-control-drawer"><ThemePanel website={websiteJSON} onChange={setWebsiteJSON}/></aside>}
+            <PreviewDashboard visible={viewMode === "dashboard"} website={websiteJSON} aiActions={history.length} onWebsiteChange={(website) => setWebsiteJSON(website, { label: "Apply website JSON" })} />
+            {editorTab==="design"&&<aside className="editor-control-drawer"><DesignPresetPanel website={websiteJSON} onChange={(website,label) => setWebsiteJSON(website,{label})}/></aside>}
+            {editorTab==="theme"&&<aside className="editor-control-drawer"><ThemePanel website={websiteJSON} onChange={(website,options) => setWebsiteJSON(website,options)}/></aside>}
             {editorTab==="layers"&&<aside className="editor-control-drawer editor-panel"><h2>Layers</h2>{websiteJSON.sections.map(section=><button type="button" key={section.id} onClick={()=>{setSelection({sectionId:section.id});setViewMode("edit")}}>{section.type} · {section.variant}</button>)}</aside>}
             {editorTab==="properties"&&websiteJSON.sections.find(s=>s.id===selection.sectionId)&&<aside className="editor-control-drawer"><SectionProperties selectedSection={websiteJSON.sections.find(s=>s.id===selection.sectionId)!} onUpdateProp={(key,value)=>updateElement(selection.sectionId,key as EditableElementKey,value)}/></aside>}
             {viewMode!=="dashboard"&&<div className="device-canvas" style={{width:device==="desktop"?"100%":device==="tablet"?"768px":"390px"}}><WebsiteRenderer website={websiteJSON} renderMode={viewMode==="edit"?"edit":"preview"} selection={selection} onSelectionChange={setSelection} onUpdateElement={updateElement} onUpdateElementStyle={updateElementStyle} onUpdateElementLink={updateElementLink} onRemoveSection={removeSection} onDuplicateSection={duplicateSection} onChangeVariant={changeVariant} onMoveSection={moveSection} /></div>}
