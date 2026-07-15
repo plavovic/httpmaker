@@ -12,7 +12,7 @@ const chars = '%$#@!&*';
 export default function Button({ children, compact = false, className = '', ...props }: ButtonProps) {
   const [displayText, setDisplayText] = useState(children);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
+  
   useEffect(() => {
     setDisplayText(children);
     return () => {
