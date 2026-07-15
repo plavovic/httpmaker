@@ -14,7 +14,7 @@ export default function EditorToolbar(props: Props) {
       <div className="studio-device-switch" aria-label="Preview device">{(["desktop", "tablet", "mobile"] as DeviceMode[]).map((device) => <button type="button" key={device} title={`${device} preview`} aria-label={`${device} preview`} className={props.device === device ? "selected" : ""} onClick={() => props.onDeviceChange(device)}><span className={`device-icon device-icon-${device}`} /></button>)}</div>
       <div className="studio-view-switch">{(["preview", "edit", "dashboard"] as ViewMode[]).map((mode) => <button type="button" key={mode} onClick={() => props.onViewModeChange(mode)} className={props.viewMode === mode ? "selected" : ""}>{mode}</button>)}</div>
       <button type="button" className="studio-preview-button" onClick={props.onOpenPreview} title="Open full preview">↗</button>
-      <button type="button" className="studio-publish-button"><span>Publish</span><b>⌄</b></button>
+      <button type="button" className="studio-publish-button"><span>Publish</span></button>
     </div>
   </header>;
 }

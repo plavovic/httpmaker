@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { EditorTab } from "@/components/editor/EditorToolbar";
 
 const editorTabs: Array<{ id: EditorTab; label: string }> = [
@@ -13,16 +14,16 @@ type EditorTabsProps = {
   onChange: (tab: EditorTab) => void;
 };
 
+type EditorTabsStyle = CSSProperties & {
+  "--editor-tab-index": number;
+};
+
 export default function EditorTabs({ value, onChange }: EditorTabsProps) {
   const selectedIndex = Math.max(0, editorTabs.findIndex((tab) => tab.id === value));
+  const style: EditorTabsStyle = { "--editor-tab-index": selectedIndex };
 
   return (
-    <div
-      className="editor-tabs"
-      role="radiogroup"
-      aria-label="Editor panels"
-      style={{ "--editor-tab-index": selectedIndex } as React.CSSProperties}
-    >
+    <div className="editor-tabs" role="radiogroup" aria-label="Editor panels" style={style}>
       <span className="editor-tabs-indicator" aria-hidden="true" />
       {editorTabs.map((tab) => (
         <label className="editor-tabs-option" key={tab.id}>
