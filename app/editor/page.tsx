@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import EditorSidebar, { type ChatMessage, type PromptHistoryItem } from "@/components/editor/EditorSidebar";
 import EditorToolbar, { type DeviceMode, type EditorTab } from "@/components/editor/EditorToolbar";
 import DesignPresetPanel from "@/components/editor/presets/DesignPresetPanel";
@@ -10,13 +10,17 @@ import PreviewDashboard from "@/components/editor/PreviewDashboard";
 import { initialWebsite } from "@/data/initialWebsite";
 import WebsiteRenderer from "@/renderer/WebsiteRenderer";
 import type { ColorMode, EditableElementKey, EditableElementStyle, EditorSelection, ViewMode, WebsiteJSON } from "@/types/website";
-import { EDITOR_THEME_STORAGE_KEY, readStoredEditorTheme, readStoredWebsite, WEBSITE_STORAGE_KEY } from "@/utils/editorStorage";
+import { EDITOR_THEME_STORAGE_KEY, readStoredEditorTheme, readStoredWebsite, saveStoredWebsite } from "@/utils/editorStorage";
 import { useWebsiteHistory } from "@/hooks/useWebsiteHistory";
 import { requestAiProposal, AiClientError } from "@/services/ai/client";
 import { applyWebsiteDesignPatchSafely } from "@/services/ai/applyWebsiteDesignPatchSafely";
 import type { AiMode, AiPatchProposal } from "@/types/ai";
+import AssetLibrary from "@/components/editor/assets/AssetLibrary";
+import type { UploadedImageAsset } from "@/types/uploadedAsset";
+import { compactWebsiteAssetReferences, createAssetReference, createImageAsset, deleteImageAsset, listImageAssets, resolveWebsiteAssetReferences, saveImageAsset } from "@/utils/assetStorage";
+import { exportWebsiteZip } from "@/utils/exportWebsiteZip";
 
-type PendingProposal = { proposal: AiPatchProposal; mode: AiMode; selectedSectionId?: string };
+type PendingProposal = { proposal: AiPatchProposal; previewWebsite: WebsiteJSON; mode: AiMode; selectedSectionId?: string };
 const modeForPrompt = (message: string): AiMode => /\b(add|insert|create)\b.*\b(section|hero|navbar|about|carousel|features|contact|footer)\b/i.test(message) ? "add-section" : /\b(restyle|theme|palette|colors?|dark|light|design)\b/i.test(message) ? "restyle-website" : /\b(rewrite|copy|content)\b/i.test(message) ? "rewrite-content" : "edit-selected-section";
 
 export default function EditorPage() {
@@ -33,6 +37,11 @@ export default function EditorPage() {
   const [editorTab, setEditorTab] = useState<EditorTab>("ai");
   const [device, setDevice] = useState<DeviceMode>("desktop");
   const [pendingProposal, setPendingProposal] = useState<PendingProposal | null>(null);
+  const [assets,setAssets]=useState<UploadedImageAsset[]>([]);
+  const [assetLibraryOpen,setAssetLibraryOpen]=useState(false);
+  const [assetTarget,setAssetTarget]=useState<string>();
+  const [assetBusy,setAssetBusy]=useState(false);
+  const [assetError,setAssetError]=useState("");
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const aiRequestRef = useRef<AbortController | null>(null);
   const dragStateRef = useRef<{ isDragging: boolean; startX: number; startY: number }>({ isDragging: false, startX: 0, startY: 0 });
@@ -73,9 +82,9 @@ export default function EditorPage() {
 
   useEffect(() => {
     if (!storageReady) return;
-    localStorage.setItem(WEBSITE_STORAGE_KEY, JSON.stringify(websiteJSON));
-    localStorage.setItem(EDITOR_THEME_STORAGE_KEY, colorMode);
-  }, [colorMode, storageReady, websiteJSON]);
+    saveStoredWebsite(compactWebsiteAssetReferences(websiteJSON,assets));
+    try { localStorage.setItem(EDITOR_THEME_STORAGE_KEY, colorMode); } catch { /* The editor remains usable when browser storage is unavailable. */ }
+  }, [assets, colorMode, storageReady, websiteJSON]);
 
   useEffect(() => {
     if (editorTab === "ai") return;
@@ -142,6 +151,11 @@ export default function EditorPage() {
   }, []);
 
   useEffect(() => () => aiRequestRef.current?.abort(), []);
+  useEffect(()=>{listImageAssets().then(setAssets).catch(()=>setAssetError("The asset library could not be opened."))},[]);
+
+  const uploadFiles=async(files:File[])=>{if(!files.length)return;setAssetBusy(true);setAssetError("");try{const uploaded=[] as UploadedImageAsset[];for(const file of files){const asset=await createImageAsset(file);await saveImageAsset(asset);uploaded.push(asset)}setAssets(current=>[...uploaded,...current]);setAssetLibraryOpen(true)}catch(reason){setAssetError(reason instanceof Error?reason.message:"Image upload failed.")}finally{setAssetBusy(false)}};
+  const chooseAsset=(asset:UploadedImageAsset)=>{if(!assetTarget)return;setWebsiteJSON(current=>({...current,sections:current.sections.map(section=>section.id===assetTarget?{...section,props:{...section.props,imageUrl:createAssetReference(asset.id)}}:section)}),{label:"Replace image"});setSelection({sectionId:assetTarget,elementKey:"imageUrl"});setAssetLibraryOpen(false)};
+  const removeAsset=async(id:string)=>{await deleteImageAsset(id);setAssets(current=>current.filter(asset=>asset.id!==id))};
 
   const updateElement = (sectionId: string, elementKey: EditableElementKey, value: string) => setWebsiteJSON((current) => ({ ...current, sections: current.sections.map((section) => section.id !== sectionId ? section : elementKey.startsWith("content.") ? { ...section, content: { ...section.content, [elementKey]: value } } : { ...section, props: { ...section.props, [elementKey]: value } }) }), { label: `Edit ${elementKey.replace("content.", "")}`, group: `content:${sectionId}:${elementKey}` });
   const updateElementStyle = (sectionId: string, elementKey: EditableElementKey, patch: Partial<EditableElementStyle>) => setWebsiteJSON((current) => ({ ...current, sections: current.sections.map((section) => section.id === sectionId ? { ...section, elementStyles: { ...section.elementStyles, [elementKey]: { ...section.elementStyles?.[elementKey], ...patch } } } : section) }), { label: `Style ${elementKey.replace("content.", "")}`, group: `style:${sectionId}:${elementKey}:${Object.keys(patch).sort().join(",")}` });
@@ -159,7 +173,7 @@ export default function EditorPage() {
   const moveSection = (sourceId:string,targetId:string)=>setWebsiteJSON((current)=>{const from=current.sections.findIndex(s=>s.id===sourceId);const to=current.sections.findIndex(s=>s.id===targetId);if(from<0||to<0||from===to)return current;const sections=[...current.sections];const [moved]=sections.splice(from,1);sections.splice(to,0,moved);return {...current,sections}}, { label: "Move section" });
 
   const openPreview = () => {
-    localStorage.setItem(WEBSITE_STORAGE_KEY, JSON.stringify(websiteJSON));
+    saveStoredWebsite(compactWebsiteAssetReferences(websiteJSON,assets));
     window.open("/preview", "_blank", "noopener,noreferrer");
   };
 
@@ -180,8 +194,12 @@ export default function EditorPage() {
     const selectedSectionId = mode === "edit-selected-section" || mode === "rewrite-content" ? selection.sectionId : undefined;
     try {
       const response = await requestAiProposal({ mode, instruction: message, website: websiteJSON, selectedSectionId }, controller.signal);
-      setPendingProposal({ proposal: response.proposal, mode, selectedSectionId });
-      setMessages((current) => [...current, { id: `${id}-reply`, role: "assistant", text: "I prepared a proposal. Review it before applying any changes." }]);
+      const previewResult = applyWebsiteDesignPatchSafely({ website: websiteJSON, patch: response.proposal.patch, mode, selectedSectionId });
+      if (!previewResult.success) throw new AiClientError(`The proposal cannot be previewed: ${previewResult.error.message}`);
+      setPendingProposal({ proposal: response.proposal, previewWebsite: previewResult.website, mode, selectedSectionId });
+      setEditorTab("ai");
+      setViewMode("preview");
+      setMessages((current) => [...current, { id: `${id}-reply`, role: "assistant", text: "The proposed changes are now visible on the canvas. Apply them or discard the preview." }]);
     } catch (reason) {
       if (controller.signal.aborted) return;
       const detail = reason instanceof AiClientError ? reason.message : "The proposal could not be generated.";
@@ -194,13 +212,8 @@ export default function EditorPage() {
 
   const applyProposal = () => {
     if (!pendingProposal) return;
-    const result = applyWebsiteDesignPatchSafely({ website: websiteJSON, patch: pendingProposal.proposal.patch, mode: pendingProposal.mode, selectedSectionId: pendingProposal.selectedSectionId });
-    if (!result.success) {
-      setMessages((current) => [...current, { id: crypto.randomUUID(), role: "assistant", text: `This proposal can no longer be applied: ${result.error.message}` }]);
-      return;
-    }
     const label = pendingProposal.proposal.summary[0]?.title ?? "Apply AI proposal";
-    setWebsiteJSON(result.website, { label: `AI: ${label}`, source: "ai" });
+    setWebsiteJSON(pendingProposal.previewWebsite, { label: `AI: ${label}`, source: "ai" });
     setPendingProposal(null);
     setMessages((current) => [...current, { id: crypto.randomUUID(), role: "assistant", text: "Proposal applied. You can undo it as one operation." }]);
   };
@@ -210,26 +223,31 @@ export default function EditorPage() {
     setMessages((current) => [...current, { id: crypto.randomUUID(), role: "assistant", text: "Proposal discarded. No website changes were made." }]);
   };
 
+  const displayedWebsite = useMemo(()=>resolveWebsiteAssetReferences(pendingProposal?.previewWebsite ?? websiteJSON,assets),[assets,pendingProposal,websiteJSON]);
+  const websiteLocked = isProcessing || Boolean(pendingProposal);
+
   if (!storageReady) return <main data-theme="light" className="ide-shell h-screen" aria-label="Loading editor" />;
 
   return (
     <main data-theme={colorMode} className="ide-shell studio-shell flex h-screen min-h-0 flex-col overflow-hidden">
-      <EditorToolbar colorMode={colorMode} onToggleColorMode={() => setColorMode((mode) => mode === "dark" ? "light" : "dark")} viewMode={viewMode} onViewModeChange={setViewMode} onOpenPreview={openPreview} editorTab={editorTab} onEditorTabChange={setEditorTab} device={device} onDeviceChange={setDevice} canUndo={canUndo} canRedo={canRedo} undoLabel={undoLabel} redoLabel={redoLabel} onUndo={undo} onRedo={redo} />
+      <EditorToolbar colorMode={colorMode} onToggleColorMode={() => setColorMode((mode) => mode === "dark" ? "light" : "dark")} viewMode={viewMode} onViewModeChange={setViewMode} onOpenPreview={openPreview} onExport={()=>void exportWebsiteZip(resolveWebsiteAssetReferences(websiteJSON,assets))} editorTab={editorTab} onEditorTabChange={setEditorTab} device={device} onDeviceChange={setDevice} canUndo={canUndo} canRedo={canRedo} undoLabel={undoLabel} redoLabel={redoLabel} onUndo={undo} onRedo={redo} />
       <div className="studio-body flex min-h-0 flex-1">
         <EditorSidebar messages={messages} history={history} isProcessing={isProcessing} prompt={prompt} onPromptChange={setPrompt} autoMode={autoMode} onToggleAutoMode={() => setAutoMode((value) => !value)} onSubmit={handleSend} proposal={pendingProposal?.proposal ?? null} onApplyProposal={applyProposal} onDiscardProposal={discardProposal} />
         <section className="ide-workspace flex-1 min-h-0 overflow-hidden">
         <div className="flex h-full flex-col">
-          <div ref={viewportRef} className="editor-viewport studio-viewport flex-1 min-h-0 overflow-auto cursor-grab">
-            <PreviewDashboard visible={viewMode === "dashboard"} website={websiteJSON} aiActions={history.length} onWebsiteChange={(website) => setWebsiteJSON(website, { label: "Apply website JSON" })} />
-            {editorTab==="design"&&<aside className="editor-control-drawer"><DesignPresetPanel website={websiteJSON} onChange={(website,label) => setWebsiteJSON(website,{label})}/></aside>}
-            {editorTab==="theme"&&<aside className="editor-control-drawer"><ThemePanel website={websiteJSON} onChange={(website,options) => setWebsiteJSON(website,options)}/></aside>}
-            {editorTab==="layers"&&<aside className="editor-control-drawer editor-panel"><h2>Layers</h2>{websiteJSON.sections.map(section=><button type="button" key={section.id} onClick={()=>{setSelection({sectionId:section.id});setViewMode("edit")}}>{section.type} · {section.variant}</button>)}</aside>}
-            {editorTab==="properties"&&websiteJSON.sections.find(s=>s.id===selection.sectionId)&&<aside className="editor-control-drawer"><SectionProperties selectedSection={websiteJSON.sections.find(s=>s.id===selection.sectionId)!} onUpdateProp={(key,value)=>updateElement(selection.sectionId,key as EditableElementKey,value)}/></aside>}
-            {viewMode!=="dashboard"&&<div className="device-canvas" style={{width:device==="desktop"?"100%":device==="tablet"?"768px":"390px"}}><WebsiteRenderer website={websiteJSON} renderMode={viewMode==="edit"?"edit":"preview"} selection={selection} onSelectionChange={setSelection} onUpdateElement={updateElement} onUpdateElementStyle={updateElementStyle} onUpdateElementLink={updateElementLink} onRemoveSection={removeSection} onDuplicateSection={duplicateSection} onChangeVariant={changeVariant} onMoveSection={moveSection} /></div>}
+          <div ref={viewportRef} className="editor-viewport studio-viewport flex-1 min-h-0 overflow-auto cursor-grab" onDragOver={event=>{if(event.dataTransfer.types.includes("Files"))event.preventDefault()}} onDrop={event=>{if(!event.dataTransfer.files.length)return;event.preventDefault();void uploadFiles(Array.from(event.dataTransfer.files))}}>
+            <button type="button" className="asset-library-trigger" onClick={()=>setAssetLibraryOpen(true)}>Assets <span>{assets.length}</span></button>
+            <PreviewDashboard visible={viewMode === "dashboard"} website={displayedWebsite} aiActions={history.length} onWebsiteChange={(website) => { if (!websiteLocked) setWebsiteJSON(website, { label: "Apply website JSON" }); }} />
+            {!websiteLocked&&editorTab==="design"&&<aside className="editor-control-drawer"><DesignPresetPanel website={websiteJSON} onChange={(website,label) => setWebsiteJSON(website,{label})}/></aside>}
+            {!websiteLocked&&editorTab==="theme"&&<aside className="editor-control-drawer"><ThemePanel website={websiteJSON} onChange={(website,options) => setWebsiteJSON(website,options)}/></aside>}
+            {!websiteLocked&&editorTab==="layers"&&<aside className="editor-control-drawer editor-panel"><h2>Layers</h2>{websiteJSON.sections.map(section=><button type="button" key={section.id} onClick={()=>{setSelection({sectionId:section.id});setViewMode("edit")}}>{section.type} · {section.variant}</button>)}</aside>}
+            {!websiteLocked&&editorTab==="properties"&&websiteJSON.sections.find(s=>s.id===selection.sectionId)&&<aside className="editor-control-drawer"><SectionProperties selectedSection={websiteJSON.sections.find(s=>s.id===selection.sectionId)!} onUpdateProp={(key,value)=>updateElement(selection.sectionId,key as EditableElementKey,value)}/></aside>}
+            {viewMode!=="dashboard"&&<div className={`device-canvas ${pendingProposal?"ai-preview-active":""}`} style={{width:device==="desktop"?"100%":device==="tablet"?"768px":"390px"}}><WebsiteRenderer website={displayedWebsite} renderMode={websiteLocked?"preview":viewMode==="edit"?"edit":"preview"} selection={selection} onSelectionChange={setSelection} onUpdateElement={updateElement} onUpdateElementStyle={updateElementStyle} onUpdateElementLink={updateElementLink} onRemoveSection={removeSection} onDuplicateSection={duplicateSection} onChangeVariant={changeVariant} onMoveSection={moveSection} onRequestImagePicker={sectionId=>{setAssetTarget(sectionId);setAssetLibraryOpen(true)}} /></div>}
           </div>
         </div>
         </section>
       </div>
+      <AssetLibrary assets={assets} open={assetLibraryOpen} hasTarget={Boolean(assetTarget)} busy={assetBusy} error={assetError} onClose={()=>setAssetLibraryOpen(false)} onFiles={files=>void uploadFiles(files)} onSelect={chooseAsset} onDelete={id=>void removeAsset(id)}/>
     </main>
   );
 }

@@ -74,6 +74,7 @@ export type EditableElementStyle = {
   lineHeight?: string;
   letterSpacing?: string;
   objectFit?: "cover" | "contain";
+  widthPercent?: number;
   buttonStyle?: "filled" | "outline";
 };
 
@@ -89,4 +90,5 @@ export type WebsiteSectionComponentProps = {
   elementStyles?: ElementStyleMap;
   elementLinks?: ElementLinkMap;
   onUpdateElement?: (elementKey: EditableElementKey, value: string) => void;
+  onRequestImagePicker?: () => void;
 };

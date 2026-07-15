@@ -47,6 +47,7 @@ export const editableElementStyleSchema = z.object({
   lineHeight: z.string().optional(),
   letterSpacing: z.string().optional(),
   objectFit: z.enum(["cover", "contain"]).optional(),
+  widthPercent: z.number().finite().min(10).max(70).optional(),
   buttonStyle: z.enum(["filled", "outline"]).optional(),
 }).strict();
 

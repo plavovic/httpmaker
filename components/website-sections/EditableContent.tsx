@@ -2,12 +2,13 @@ import type { CSSProperties, MouseEvent, ReactNode } from "react";
 import type { EditableElementKey, WebsiteSectionComponentProps } from "@/types/website";
 import { getImageTreatmentStyle } from "@/utils/getImageTreatmentStyle";
 
-type EditorProps = Pick<WebsiteSectionComponentProps, "section" | "theme" | "editable" | "selectedElementKey" | "onSelectElement" | "elementStyles">;
+type EditorProps = Pick<WebsiteSectionComponentProps, "section" | "theme" | "editable" | "selectedElementKey" | "onSelectElement" | "elementStyles" | "onRequestImagePicker">;
 type EditableTextProps = EditorProps & { elementKey: EditableElementKey; children: ReactNode; className?: string };
 
 function visualStyle(props: EditorProps, key: EditableElementKey): CSSProperties {
-  const { buttonStyle: _buttonStyle, ...style } = props.elementStyles?.[key] ?? {};
-  return style;
+  const { buttonStyle: _buttonStyle, widthPercent, ...style } = props.elementStyles?.[key] ?? {};
+  const imageUsesGridTrack = key === "imageUrl" && (props.section.type === "hero" || props.section.type === "about");
+  return { ...style, ...(widthPercent ? { width: imageUsesGridTrack ? "100%" : `${widthPercent}%` } : {}) };
 }
 
 function select(props: EditorProps, key: EditableElementKey) {
@@ -28,5 +29,5 @@ export function EditableText(props: EditableTextProps) {
 type EditableImageProps = EditorProps & { src: string; alt: string; className: string };
 export function EditableImage(props: EditableImageProps) {
   const selected = props.editable && props.selectedElementKey === "imageUrl";
-  return <img data-editor-element="imageUrl" onClick={select(props, "imageUrl")} src={props.src} alt={props.alt} style={{...(!props.editable?getImageTreatmentStyle(props.theme.imageTreatment):{}),...visualStyle(props, "imageUrl")}} className={`${props.className} ${props.editable ? "cursor-pointer outline outline-2 outline-offset-4" : ""} ${selected ? "outline-blue-500" : props.editable ? "outline-transparent hover:outline-blue-300" : ""}`} />;
+  return <img data-editor-element="imageUrl" onClick={select(props, "imageUrl")} onDoubleClick={(event)=>{if(!props.editable)return;event.preventDefault();event.stopPropagation();props.onSelectElement?.("imageUrl");props.onRequestImagePicker?.()}} src={props.src} alt={props.alt} style={{...(!props.editable?getImageTreatmentStyle(props.theme.imageTreatment):{}),...visualStyle(props, "imageUrl")}} className={`${props.className} ${props.editable ? "cursor-pointer outline outline-2 outline-offset-4" : ""} ${selected ? "outline-blue-500" : props.editable ? "outline-transparent hover:outline-blue-300" : ""}`} />;
 }
