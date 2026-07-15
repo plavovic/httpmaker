@@ -30,4 +30,8 @@ export const aiPatchProposalSchema = z.object({ patch: websiteDesignPatchSchema,
 export const aiSuccessResponseSchema = z.object({ success: z.literal(true), proposal: aiPatchProposalSchema, provider: z.literal("mock"), requestId: z.string().min(1), durationMs: z.number().finite().nonnegative() }).strict();
 export const aiErrorCodeSchema = z.enum(["INVALID_REQUEST", "NO_SELECTED_SECTION", "PROVIDER_UNAVAILABLE", "REQUEST_TIMEOUT", "INVALID_MODEL_OUTPUT", "PATCH_VALIDATION_FAILED", "PERMISSION_VIOLATION", "PATCH_APPLICATION_FAILED", "UNKNOWN_ERROR"]);
 export const aiErrorResponseSchema = z.object({ success: z.literal(false), error: z.object({ code: aiErrorCodeSchema, message: z.string().min(1), details: z.array(z.string()).optional() }).strict(), requestId: z.string().min(1) }).strict();
-export const aiApiResponseSchema = z.discriminatedUnion("success", [aiSuccessResponseSchema, aiErrorResponseSchema]);
+// Zod 4.4.3's discriminated-union constructor is emitted with an undeclared
+// `discriminator` reference by the Next.js production server bundler. The two
+// strict branches still discriminate on their literal `success` fields while
+// avoiding that upstream bundling defect.
+export const aiApiResponseSchema = z.union([aiSuccessResponseSchema, aiErrorResponseSchema]);
