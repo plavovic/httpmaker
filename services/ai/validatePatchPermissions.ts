@@ -1,38 +1,37 @@
 import { isContentProperty, isSupportedSectionType, isSupportedVariant } from "@/services/ai/builderCapabilities";
 import { aiModePermissions } from "@/services/ai/permissions";
-import type { AiMode } from "@/types/ai";
+import type { AiRequest } from "@/types/ai";
 import type { WebsiteDesignPatch } from "@/types/designPatch";
-import type { WebsiteJSON } from "@/types/website";
 
-export type PatchPermissionViolation = { path: string; message: string };
-export type PatchPermissionResult = { success: true } | { success: false; violations: PatchPermissionViolation[] };
-export type ValidatePatchPermissionsInput = { mode: AiMode; website: WebsiteJSON; patch: WebsiteDesignPatch; selectedSectionId?: string };
+export type PatchPermissionResult = { success: true; warnings: string[] } | { success: false; violations: string[] };
 
-export function validatePatchPermissions({ mode, website, patch, selectedSectionId }: ValidatePatchPermissionsInput): PatchPermissionResult {
-  const permission = aiModePermissions[mode];
-  const violations: PatchPermissionViolation[] = [];
-  const existingIds = new Set(website.sections.map((section) => section.id));
+export function validatePatchPermissions(request: AiRequest, patch: WebsiteDesignPatch): PatchPermissionResult {
+  const permission = aiModePermissions[request.mode];
+  const violations: string[] = [];
+  const warnings: string[] = [];
+  const existingIds = new Set(request.website.sections.map((section) => section.id));
+  const addViolation = (path: string, message: string) => violations.push(`${path}: ${message}`);
 
-  if ((patch.theme || patch.presetId) && !permission.canChangeTheme) violations.push({ path: "theme", message: `${mode} cannot change the website theme or preset.` });
-  if (patch.sectionUpdates?.length && !permission.canUpdateSections) violations.push({ path: "sectionUpdates", message: `${mode} cannot update existing sections.` });
-  if (patch.addSections?.length && !permission.canAddSections) violations.push({ path: "addSections", message: `${mode} cannot add sections.` });
-  if (patch.removeSectionIds?.length && !permission.canRemoveSections) violations.push({ path: "removeSectionIds", message: `${mode} cannot remove sections.` });
+  if ((patch.theme || patch.presetId) && !permission.canChangeTheme) addViolation("theme", `${request.mode} cannot change the website theme or preset.`);
+  if (patch.sectionUpdates?.length && !permission.canUpdateSections) addViolation("sectionUpdates", `${request.mode} cannot update existing sections.`);
+  if (patch.addSections?.length && !permission.canAddSections) addViolation("addSections", `${request.mode} cannot add sections.`);
+  if (patch.removeSectionIds?.length && !permission.canRemoveSections) addViolation("removeSectionIds", `${request.mode} cannot remove sections.`);
 
   const seenUpdates = new Set<string>();
   const sectionUpdates = patch.sectionUpdates ?? [];
   for (let index = 0; index < sectionUpdates.length; index += 1) {
     const update = sectionUpdates[index];
     const path = `sectionUpdates.${index}`;
-    const section = website.sections.find((item) => item.id === update.sectionId);
-    if (!section) violations.push({ path: `${path}.sectionId`, message: `Section ${update.sectionId} does not exist.` });
-    if (seenUpdates.has(update.sectionId)) violations.push({ path: `${path}.sectionId`, message: `Section ${update.sectionId} is updated more than once.` });
+    const section = request.website.sections.find((item) => item.id === update.sectionId);
+    if (!section) addViolation(`${path}.sectionId`, `Section ${update.sectionId} does not exist.`);
+    if (seenUpdates.has(update.sectionId)) addViolation(`${path}.sectionId`, `Section ${update.sectionId} is updated more than once.`);
     seenUpdates.add(update.sectionId);
-    if (permission.restrictUpdatesToSelectedSection && update.sectionId !== selectedSectionId) violations.push({ path: `${path}.sectionId`, message: `Updates are restricted to selected section ${selectedSectionId ?? "(none)"}.` });
-    if (section && update.variant && !isSupportedVariant(section.type, update.variant)) violations.push({ path: `${path}.variant`, message: `Variant ${update.variant} is not supported for ${section.type}.` });
+    if (permission.restrictUpdatesToSelectedSection && update.sectionId !== request.selectedSectionId) addViolation(`${path}.sectionId`, `Updates are restricted to selected section ${request.selectedSectionId ?? "(none)"}.`);
+    if (section && update.variant && !isSupportedVariant(section.type, update.variant)) addViolation(`${path}.variant`, `Variant ${update.variant} is not supported for ${section.type}.`);
     if (permission.contentOnly) {
-      if (update.variant) violations.push({ path: `${path}.variant`, message: "Content-only mode cannot change section variants." });
+      if (update.variant) addViolation(`${path}.variant`, "Content-only mode cannot change section variants.");
       for (const property of Object.keys(update.props ?? {})) {
-        if (section && !isContentProperty(section.type, property)) violations.push({ path: `${path}.props.${property}`, message: `${property} is not a content property for ${section.type}.` });
+        if (section && !isContentProperty(section.type, property)) addViolation(`${path}.props.${property}`, `${property} is not a content property for ${section.type}.`);
       }
     }
   }
@@ -42,16 +41,17 @@ export function validatePatchPermissions({ mode, website, patch, selectedSection
   for (let index = 0; index < addedSections.length; index += 1) {
     const section = addedSections[index];
     const path = `addSections.${index}`;
-    if (existingIds.has(section.id) || seenAdditions.has(section.id)) violations.push({ path: `${path}.id`, message: `Section ID ${section.id} is already in use.` });
+    if (existingIds.has(section.id) || seenAdditions.has(section.id)) addViolation(`${path}.id`, `Section ID ${section.id} is already in use.`);
     seenAdditions.add(section.id);
-    if (!isSupportedSectionType(section.type)) violations.push({ path: `${path}.type`, message: `Section type ${section.type} is not supported.` });
-    else if (!isSupportedVariant(section.type, section.variant)) violations.push({ path: `${path}.variant`, message: `Variant ${section.variant} is not supported for ${section.type}.` });
+    if (!isSupportedSectionType(section.type)) addViolation(`${path}.type`, `Section type ${section.type} is not supported.`);
+    else if (!isSupportedVariant(section.type, section.variant)) addViolation(`${path}.variant`, `Variant ${section.variant} is not supported for ${section.type}.`);
   }
 
   const removedSectionIds = patch.removeSectionIds ?? [];
   for (let index = 0; index < removedSectionIds.length; index += 1) {
     const sectionId = removedSectionIds[index];
-    if (!existingIds.has(sectionId)) violations.push({ path: `removeSectionIds.${index}`, message: `Section ${sectionId} does not exist.` });
+    if (!existingIds.has(sectionId)) addViolation(`removeSectionIds.${index}`, `Section ${sectionId} does not exist.`);
   }
-  return violations.length ? { success: false, violations } : { success: true };
+  if (!patch.theme && !patch.presetId && !patch.sectionUpdates?.length && !patch.addSections?.length && !patch.removeSectionIds?.length) warnings.push("The patch contains no operations.");
+  return violations.length ? { success: false, violations } : { success: true, warnings };
 }

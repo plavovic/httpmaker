@@ -18,13 +18,13 @@ export function applyWebsiteDesignPatchSafely(input: SafePatchApplicationInput):
   if (!websiteResult.success) return { success: false, error: { code: "PATCH_VALIDATION_FAILED", message: "The source website is invalid.", details: issueDetails(websiteResult.error.issues) } };
   const patchResult = websiteDesignPatchSchema.safeParse(input.patch);
   if (!patchResult.success) return { success: false, error: { code: "PATCH_VALIDATION_FAILED", message: "The website patch is invalid.", details: issueDetails(patchResult.error.issues) } };
-  const permissionResult = validatePatchPermissions({ mode: input.mode, website: websiteResult.data, patch: patchResult.data, selectedSectionId: input.selectedSectionId });
-  if (!permissionResult.success) return { success: false, error: { code: "PERMISSION_VIOLATION", message: "The patch exceeds this AI mode's permissions.", details: permissionResult.violations.map((violation) => `${violation.path}: ${violation.message}`) } };
+  const permissionResult = validatePatchPermissions({ mode: input.mode, instruction: "Apply validated website patch", website: websiteResult.data, selectedSectionId: input.selectedSectionId }, patchResult.data);
+  if (!permissionResult.success) return { success: false, error: { code: "PERMISSION_VIOLATION", message: "The patch exceeds this AI mode's permissions.", details: permissionResult.violations } };
   try {
     const website = applyWebsiteDesignPatch(websiteResult.data, patchResult.data);
     const outputResult = websiteJSONSchema.safeParse(website);
     if (!outputResult.success) return { success: false, error: { code: "PATCH_APPLICATION_FAILED", message: "The patch produced an invalid website.", details: issueDetails(outputResult.error.issues) } };
-    return { success: true, website: outputResult.data, summary: createPatchSummary(websiteResult.data, patchResult.data), warnings: createPatchWarnings(websiteResult.data, patchResult.data) };
+    return { success: true, website: outputResult.data, summary: createPatchSummary(websiteResult.data, patchResult.data), warnings: [...permissionResult.warnings, ...createPatchWarnings(websiteResult.data, patchResult.data)] };
   } catch (reason) {
     return { success: false, error: { code: "PATCH_APPLICATION_FAILED", message: "The patch could not be applied.", details: [reason instanceof Error ? reason.message : "Unknown patch application error."] } };
   }

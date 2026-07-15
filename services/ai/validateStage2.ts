@@ -2,6 +2,7 @@ import { initialWebsite } from "@/data/initialWebsite";
 import { applyWebsiteDesignPatchSafely } from "@/services/ai/applyWebsiteDesignPatchSafely";
 import { createPatchSummary } from "@/services/ai/createPatchSummary";
 import { validatePatchPermissions } from "@/services/ai/validatePatchPermissions";
+import type { AiMode, AiRequest } from "@/types/ai";
 import type { WebsiteDesignPatch } from "@/types/designPatch";
 
 export type DeterministicTestResult = { passed: number; failures: string[] };
@@ -13,14 +14,15 @@ export function runStage2DeterministicTests(): DeterministicTestResult {
   const themePatch: WebsiteDesignPatch = { theme: { primaryColor: "#123456" } };
   const addPatch: WebsiteDesignPatch = { addSections: [{ ...initialWebsite.sections[1], id: "hero-test", props: { ...initialWebsite.sections[1].props } }] };
   const original = JSON.stringify(initialWebsite);
+  const request = (mode: AiMode, selectedId?: string): AiRequest => ({ mode, instruction: "Deterministic test instruction", website: initialWebsite, selectedSectionId: selectedId });
   const tests: TestCase[] = [
-    { name: "rewrite-content allows selected content", passes: () => validatePatchPermissions({ mode: "rewrite-content", website: initialWebsite, patch: contentPatch, selectedSectionId }).success },
-    { name: "rewrite-content rejects theme", passes: () => !validatePatchPermissions({ mode: "rewrite-content", website: initialWebsite, patch: themePatch, selectedSectionId }).success },
-    { name: "rewrite-content rejects another section", passes: () => !validatePatchPermissions({ mode: "rewrite-content", website: initialWebsite, patch: { sectionUpdates: [{ sectionId: initialWebsite.sections[0].id, props: { title: "No" } }] }, selectedSectionId }).success },
-    { name: "restyle allows theme", passes: () => validatePatchPermissions({ mode: "restyle-website", website: initialWebsite, patch: themePatch }).success },
-    { name: "restyle rejects additions", passes: () => !validatePatchPermissions({ mode: "restyle-website", website: initialWebsite, patch: addPatch }).success },
-    { name: "add-section allows additions", passes: () => validatePatchPermissions({ mode: "add-section", website: initialWebsite, patch: addPatch }).success },
-    { name: "add-section rejects updates", passes: () => !validatePatchPermissions({ mode: "add-section", website: initialWebsite, patch: contentPatch }).success },
+    { name: "rewrite-content allows selected content", passes: () => validatePatchPermissions(request("rewrite-content", selectedSectionId), contentPatch).success },
+    { name: "rewrite-content rejects theme", passes: () => !validatePatchPermissions(request("rewrite-content", selectedSectionId), themePatch).success },
+    { name: "rewrite-content rejects another section", passes: () => !validatePatchPermissions(request("rewrite-content", selectedSectionId), { sectionUpdates: [{ sectionId: initialWebsite.sections[0].id, props: { title: "No" } }] }).success },
+    { name: "restyle allows theme", passes: () => validatePatchPermissions(request("restyle-website"), themePatch).success },
+    { name: "restyle rejects additions", passes: () => !validatePatchPermissions(request("restyle-website"), addPatch).success },
+    { name: "add-section allows additions", passes: () => validatePatchPermissions(request("add-section"), addPatch).success },
+    { name: "add-section rejects updates", passes: () => !validatePatchPermissions(request("add-section"), contentPatch).success },
     { name: "safe application succeeds atomically", passes: () => applyWebsiteDesignPatchSafely({ mode: "rewrite-content", website: initialWebsite, patch: contentPatch, selectedSectionId }).success },
     { name: "safe application rejects invalid schema", passes: () => !applyWebsiteDesignPatchSafely({ mode: "restyle-website", website: initialWebsite, patch: { theme: { borderRadius: -1 } } }).success },
     { name: "safe application rejects forbidden patch", passes: () => { const result = applyWebsiteDesignPatchSafely({ mode: "rewrite-content", website: initialWebsite, patch: themePatch, selectedSectionId }); return !result.success && result.error.code === "PERMISSION_VIOLATION" } },
