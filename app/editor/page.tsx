@@ -10,9 +10,14 @@ import PreviewDashboard from "@/components/editor/PreviewDashboard";
 import { initialWebsite } from "@/data/initialWebsite";
 import WebsiteRenderer from "@/renderer/WebsiteRenderer";
 import type { ColorMode, EditableElementKey, EditableElementStyle, EditorSelection, ViewMode, WebsiteJSON } from "@/types/website";
-import { applyPromptCommand } from "@/utils/applyPromptCommand";
 import { EDITOR_THEME_STORAGE_KEY, readStoredEditorTheme, readStoredWebsite, WEBSITE_STORAGE_KEY } from "@/utils/editorStorage";
 import { useWebsiteHistory } from "@/hooks/useWebsiteHistory";
+import { requestAiProposal, AiClientError } from "@/services/ai/client";
+import { applyWebsiteDesignPatchSafely } from "@/services/ai/applyWebsiteDesignPatchSafely";
+import type { AiMode, AiPatchProposal } from "@/types/ai";
+
+type PendingProposal = { proposal: AiPatchProposal; mode: AiMode; selectedSectionId?: string };
+const modeForPrompt = (message: string): AiMode => /\b(add|insert|create)\b.*\b(section|hero|navbar|about|carousel|features|contact|footer)\b/i.test(message) ? "add-section" : /\b(restyle|theme|palette|colors?|dark|light|design)\b/i.test(message) ? "restyle-website" : /\b(rewrite|copy|content)\b/i.test(message) ? "rewrite-content" : "edit-selected-section";
 
 export default function EditorPage() {
   const { website: websiteJSON, setWebsite: setWebsiteJSON, replaceWebsite, undo, redo, canUndo, canRedo, undoLabel, redoLabel } = useWebsiteHistory(initialWebsite);
@@ -27,7 +32,9 @@ export default function EditorPage() {
   const [storageReady, setStorageReady] = useState(false);
   const [editorTab, setEditorTab] = useState<EditorTab>("ai");
   const [device, setDevice] = useState<DeviceMode>("desktop");
+  const [pendingProposal, setPendingProposal] = useState<PendingProposal | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
+  const aiRequestRef = useRef<AbortController | null>(null);
   const dragStateRef = useRef<{ isDragging: boolean; startX: number; startY: number }>({ isDragging: false, startX: 0, startY: 0 });
 
   useEffect(() => {
@@ -134,6 +141,8 @@ export default function EditorPage() {
     };
   }, []);
 
+  useEffect(() => () => aiRequestRef.current?.abort(), []);
+
   const updateElement = (sectionId: string, elementKey: EditableElementKey, value: string) => setWebsiteJSON((current) => ({ ...current, sections: current.sections.map((section) => section.id !== sectionId ? section : elementKey.startsWith("content.") ? { ...section, content: { ...section.content, [elementKey]: value } } : { ...section, props: { ...section.props, [elementKey]: value } }) }), { label: `Edit ${elementKey.replace("content.", "")}`, group: `content:${sectionId}:${elementKey}` });
   const updateElementStyle = (sectionId: string, elementKey: EditableElementKey, patch: Partial<EditableElementStyle>) => setWebsiteJSON((current) => ({ ...current, sections: current.sections.map((section) => section.id === sectionId ? { ...section, elementStyles: { ...section.elementStyles, [elementKey]: { ...section.elementStyles?.[elementKey], ...patch } } } : section) }), { label: `Style ${elementKey.replace("content.", "")}`, group: `style:${sectionId}:${elementKey}:${Object.keys(patch).sort().join(",")}` });
   const updateElementLink = (sectionId: string, elementKey: EditableElementKey, value: string) => setWebsiteJSON((current) => ({ ...current, sections: current.sections.map((section) => section.id === sectionId ? { ...section, elementLinks: { ...section.elementLinks, [elementKey]: value } } : section) }), { label: `Edit ${elementKey.replace("content.", "")} link`, group: `link:${sectionId}:${elementKey}` });
@@ -154,7 +163,7 @@ export default function EditorPage() {
     window.open("/preview", "_blank", "noopener,noreferrer");
   };
 
-  const handleSend = (event: FormEvent) => {
+  const handleSend = async (event: FormEvent) => {
     event.preventDefault();
     const message = prompt.trim();
     if (!message || isProcessing) return;
@@ -163,11 +172,42 @@ export default function EditorPage() {
     setIsProcessing(true);
     setMessages((current) => [...current, { id, role: "user", text: message }]);
     setHistory((current) => [{ id, prompt: message, createdAt: new Date().toISOString() }, ...current]);
-    setTimeout(() => {
-      setWebsiteJSON((current) => applyPromptCommand(current, message, selection.sectionId), { label: "Apply AI change", source: "ai" });
-      setMessages((current) => [...current, { id: `${id}-reply`, role: "assistant", text: "I applied that direction to the live preview." }]);
+    setPendingProposal(null);
+    aiRequestRef.current?.abort();
+    const controller = new AbortController();
+    aiRequestRef.current = controller;
+    const mode = modeForPrompt(message);
+    const selectedSectionId = mode === "edit-selected-section" || mode === "rewrite-content" ? selection.sectionId : undefined;
+    try {
+      const response = await requestAiProposal({ mode, instruction: message, website: websiteJSON, selectedSectionId }, controller.signal);
+      setPendingProposal({ proposal: response.proposal, mode, selectedSectionId });
+      setMessages((current) => [...current, { id: `${id}-reply`, role: "assistant", text: "I prepared a proposal. Review it before applying any changes." }]);
+    } catch (reason) {
+      if (controller.signal.aborted) return;
+      const detail = reason instanceof AiClientError ? reason.message : "The proposal could not be generated.";
+      setMessages((current) => [...current, { id: `${id}-error`, role: "assistant", text: detail }]);
+    } finally {
+      if (aiRequestRef.current === controller) aiRequestRef.current = null;
       setIsProcessing(false);
-    }, 700);
+    }
+  };
+
+  const applyProposal = () => {
+    if (!pendingProposal) return;
+    const result = applyWebsiteDesignPatchSafely({ website: websiteJSON, patch: pendingProposal.proposal.patch, mode: pendingProposal.mode, selectedSectionId: pendingProposal.selectedSectionId });
+    if (!result.success) {
+      setMessages((current) => [...current, { id: crypto.randomUUID(), role: "assistant", text: `This proposal can no longer be applied: ${result.error.message}` }]);
+      return;
+    }
+    const label = pendingProposal.proposal.summary[0]?.title ?? "Apply AI proposal";
+    setWebsiteJSON(result.website, { label: `AI: ${label}`, source: "ai" });
+    setPendingProposal(null);
+    setMessages((current) => [...current, { id: crypto.randomUUID(), role: "assistant", text: "Proposal applied. You can undo it as one operation." }]);
+  };
+
+  const discardProposal = () => {
+    setPendingProposal(null);
+    setMessages((current) => [...current, { id: crypto.randomUUID(), role: "assistant", text: "Proposal discarded. No website changes were made." }]);
   };
 
   if (!storageReady) return <main data-theme="light" className="ide-shell h-screen" aria-label="Loading editor" />;
@@ -176,7 +216,7 @@ export default function EditorPage() {
     <main data-theme={colorMode} className="ide-shell studio-shell flex h-screen min-h-0 flex-col overflow-hidden">
       <EditorToolbar colorMode={colorMode} onToggleColorMode={() => setColorMode((mode) => mode === "dark" ? "light" : "dark")} viewMode={viewMode} onViewModeChange={setViewMode} onOpenPreview={openPreview} editorTab={editorTab} onEditorTabChange={setEditorTab} device={device} onDeviceChange={setDevice} canUndo={canUndo} canRedo={canRedo} undoLabel={undoLabel} redoLabel={redoLabel} onUndo={undo} onRedo={redo} />
       <div className="studio-body flex min-h-0 flex-1">
-        <EditorSidebar messages={messages} history={history} isProcessing={isProcessing} prompt={prompt} onPromptChange={setPrompt} autoMode={autoMode} onToggleAutoMode={() => setAutoMode((value) => !value)} onSubmit={handleSend} />
+        <EditorSidebar messages={messages} history={history} isProcessing={isProcessing} prompt={prompt} onPromptChange={setPrompt} autoMode={autoMode} onToggleAutoMode={() => setAutoMode((value) => !value)} onSubmit={handleSend} proposal={pendingProposal?.proposal ?? null} onApplyProposal={applyProposal} onDiscardProposal={discardProposal} />
         <section className="ide-workspace flex-1 min-h-0 overflow-hidden">
         <div className="flex h-full flex-col">
           <div ref={viewportRef} className="editor-viewport studio-viewport flex-1 min-h-0 overflow-auto cursor-grab">

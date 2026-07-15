@@ -10,6 +10,15 @@ const titleFromInstruction = (instruction: string) => textAfter(instruction, /ti
 const sectionTypeFromInstruction = (instruction: string): SectionType => (["navbar", "hero", "about", "carousel", "features", "contact", "footer"] as const).find((type) => instruction.toLowerCase().includes(type)) ?? "features";
 const defaultProps = (instruction: string): WebsiteSectionProps => ({ title: titleFromInstruction(instruction), subtitle: "Created by the deterministic HTTPMAKER mock provider.", buttonText: "Learn more", secondaryButtonText: "Contact us", imageUrl: "", alignment: "left", statLabel: "New section", statValue: "01" });
 
+function abortableDelay(durationMs: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) { reject(new AiProviderError("REQUEST_TIMEOUT", "The AI request was aborted.")); return; }
+    const timeout = setTimeout(() => { signal?.removeEventListener("abort", abort); resolve(); }, durationMs);
+    const abort = () => { clearTimeout(timeout); signal?.removeEventListener("abort", abort); reject(new AiProviderError("REQUEST_TIMEOUT", "The AI request was aborted.")); };
+    signal?.addEventListener("abort", abort, { once: true });
+  });
+}
+
 function uniqueSectionId(request: AiRequest, type: SectionType): string {
   const ids = new Set(request.website.sections.map((section) => section.id));
   let index = 1;
@@ -38,7 +47,7 @@ function createPatch(request: AiRequest): WebsiteDesignPatch {
 export const mockAiProvider: AiProvider = {
   name: "mock",
   async generateProposal(request, signal): Promise<AiPatchProposal> {
-    if (signal?.aborted) throw new AiProviderError("REQUEST_TIMEOUT", "The AI request was aborted.");
+    await abortableDelay(450, signal);
     const patch = createPatch(request);
     const result = applyWebsiteDesignPatchSafely({ website: request.website, patch, mode: request.mode, selectedSectionId: request.selectedSectionId });
     if (!result.success) throw new AiProviderError(result.error.code === "PERMISSION_VIOLATION" ? "PERMISSION_VIOLATION" : "PATCH_APPLICATION_FAILED", result.error.message, result.error.details);

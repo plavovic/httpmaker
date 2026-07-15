@@ -1,11 +1,11 @@
-import type { AiApiResponse, AiRequest } from "@/types/ai";
+import type { AiApiResponse, AiRequest, AiSuccessResponse } from "@/types/ai";
 import { aiApiResponseSchema, aiRequestSchema } from "@/utils/aiValidationSchemas";
 
 export class AiClientError extends Error {
   constructor(message: string, public readonly response?: AiApiResponse) { super(message); this.name = "AiClientError"; }
 }
 
-export async function requestAiProposal(request: AiRequest, signal?: AbortSignal): Promise<AiApiResponse> {
+export async function requestAiProposal(request: AiRequest, signal?: AbortSignal): Promise<AiSuccessResponse> {
   const requestResult = aiRequestSchema.safeParse(request);
   if (!requestResult.success) throw new AiClientError("The AI request is invalid.");
   const response = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestResult.data), signal });

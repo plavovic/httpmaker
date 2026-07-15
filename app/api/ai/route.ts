@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAiProvider } from "@/services/ai/getAiProvider";
 import { AiProviderError } from "@/services/ai/provider";
+import { createPatchSummary, createPatchWarnings } from "@/services/ai/createPatchSummary";
+import { validatePatchPermissions } from "@/services/ai/validatePatchPermissions";
 import type { AiApiResponse, AiErrorCode } from "@/types/ai";
 import { aiPatchProposalSchema, aiRequestSchema } from "@/utils/aiValidationSchemas";
 
@@ -22,7 +24,14 @@ export async function POST(httpRequest: Request) {
     const proposal = await provider.generateProposal(requestResult.data, controller.signal);
     const proposalResult = aiPatchProposalSchema.safeParse(proposal);
     if (!proposalResult.success) return errorResponse(requestId, "INVALID_MODEL_OUTPUT", "The provider returned an invalid proposal.", proposalResult.error.issues.map((issue) => issue.message), 502);
-    return NextResponse.json<AiApiResponse>({ success: true, proposal: proposalResult.data, provider: provider.name, requestId, durationMs: Math.max(0, Math.round(performance.now() - startedAt)) });
+    const permissionResult = validatePatchPermissions(requestResult.data, proposalResult.data.patch);
+    if (!permissionResult.success) return errorResponse(requestId, "PERMISSION_VIOLATION", "The provider proposal exceeds the requested AI mode's permissions.", permissionResult.violations, 422);
+    const serverProposal = {
+      patch: proposalResult.data.patch,
+      summary: createPatchSummary(requestResult.data.website, proposalResult.data.patch),
+      warnings: [...permissionResult.warnings, ...createPatchWarnings(requestResult.data.website, proposalResult.data.patch)],
+    };
+    return NextResponse.json<AiApiResponse>({ success: true, proposal: serverProposal, provider: provider.name, requestId, durationMs: Math.max(0, Math.round(performance.now() - startedAt)) });
   } catch (reason) {
     if (reason instanceof AiProviderError) return errorResponse(requestId, reason.code, reason.message, reason.details, reason.code === "PROVIDER_UNAVAILABLE" ? 503 : reason.code === "REQUEST_TIMEOUT" ? 504 : 422);
     return errorResponse(requestId, "UNKNOWN_ERROR", reason instanceof Error ? reason.message : "Unknown AI pipeline error.", undefined, 500);
