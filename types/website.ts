@@ -34,6 +34,7 @@ export type WebsiteSection = {
 };
 
 export type WebsiteJSON = {
+  schemaVersion: 1;
   presetId?: DesignPresetId;
   isThemeCustomized?: boolean;
   theme: WebsiteTheme;

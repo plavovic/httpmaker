@@ -1,6 +1,7 @@
-import type { WebsiteJSON } from "@/types/website";
+import { parseWebsiteData } from "@/schemas/website.schema";
 
-export const initialWebsite: WebsiteJSON = {
+const initialWebsiteData = {
+  schemaVersion: 1,
   presetId: "artistic",
   isThemeCustomized: false,
   theme: {
@@ -96,6 +97,8 @@ export const initialWebsite: WebsiteJSON = {
     },
   ],
 };
+
+export const initialWebsite = parseWebsiteData(initialWebsiteData);
 
 export const suggestionPills = [
   "Add booking calendar",
