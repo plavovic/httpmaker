@@ -5,7 +5,7 @@ export type SectionVariant = "luxury" | "brutalist";
 export type Alignment = "left" | "center" | "right";
 
 import type { DesignPresetId, ImageTreatment, SpacingScale, VisualDensity } from "@/types/designPreset";
-export type WebsiteTheme = { backgroundColor:string; surfaceColor:string; primaryColor:string; secondaryColor:string; accentColor:string; textColor:string; mutedTextColor:string; headingFont:string; bodyFont:string; borderRadius:number; spacingScale:SpacingScale; visualDensity:VisualDensity; imageTreatment:ImageTreatment; fontFamily?:string };
+export type WebsiteTheme = { backgroundColor:string; backgroundImageUrl?:string; backgroundImageFit?:"cover"|"contain"; surfaceColor:string; primaryColor:string; secondaryColor:string; accentColor:string; textColor:string; mutedTextColor:string; headingFont:string; bodyFont:string; borderRadius:number; spacingScale:SpacingScale; visualDensity:VisualDensity; imageTreatment:ImageTreatment; fontFamily?:string };
 
 export type WebsiteSectionProps = {
   title: string;
@@ -24,6 +24,7 @@ export type WebsiteSection = {
   id: string;
   type: SectionType;
   variant: SectionVariant;
+  backgroundColor?: string;
   props: WebsiteSectionProps;
   elementStyles?: ElementStyleMap;
   elementLinks?: ElementLinkMap;
@@ -75,7 +76,11 @@ export type EditableElementStyle = {
   letterSpacing?: string;
   objectFit?: "cover" | "contain";
   widthPercent?: number;
+  offsetX?: number;
+  offsetY?: number;
   buttonStyle?: "filled" | "outline";
+  animation?: "none" | "fade" | "slide-up" | "slide-left" | "slide-right" | "scale" | "float" | "pulse";
+  animationSpeed?: "slow" | "normal" | "fast";
 };
 
 export type ElementStyleMap = Partial<Record<EditableElementKey, EditableElementStyle>>;

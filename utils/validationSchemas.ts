@@ -21,6 +21,8 @@ const editableElementKeySchema = z.string().refine(
 
 export const websiteThemeSchema = z.object({
   backgroundColor: nonEmptyString,
+  backgroundImageUrl: z.string().optional(),
+  backgroundImageFit: z.enum(["cover", "contain"]).optional(),
   surfaceColor: nonEmptyString,
   primaryColor: nonEmptyString,
   secondaryColor: nonEmptyString,
@@ -47,8 +49,12 @@ export const editableElementStyleSchema = z.object({
   lineHeight: z.string().optional(),
   letterSpacing: z.string().optional(),
   objectFit: z.enum(["cover", "contain"]).optional(),
-  widthPercent: z.number().finite().min(10).max(70).optional(),
+  widthPercent: z.number().finite().min(10).max(100).optional(),
+  offsetX: z.number().finite().min(-2000).max(2000).optional(),
+  offsetY: z.number().finite().min(-2000).max(2000).optional(),
   buttonStyle: z.enum(["filled", "outline"]).optional(),
+  animation: z.enum(["none", "fade", "slide-up", "slide-left", "slide-right", "scale", "float", "pulse"]).optional(),
+  animationSpeed: animationSpeedSchema.optional(),
 }).strict();
 
 export const websiteSectionPropsSchema = z.object({
@@ -68,6 +74,7 @@ export const websiteSectionSchema = z.object({
   id: nonEmptyString,
   type: sectionTypeSchema,
   variant: sectionVariantSchema,
+  backgroundColor: z.string().optional(),
   props: websiteSectionPropsSchema,
   elementStyles: z.record(editableElementKeySchema, editableElementStyleSchema).optional(),
   elementLinks: z.record(editableElementKeySchema, z.string()).optional(),

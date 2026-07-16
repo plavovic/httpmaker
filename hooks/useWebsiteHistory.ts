@@ -67,7 +67,9 @@ export function useWebsiteHistory(initial: WebsiteJSON, options: WebsiteHistoryO
   const maxHistory = Math.max(1, Math.floor(options.maxHistory ?? DEFAULT_MAX_HISTORY));
   const groupWindowMs = Math.max(0, options.groupWindowMs ?? DEFAULT_GROUP_WINDOW_MS);
   const [state, dispatch] = useReducer(websiteHistoryReducer, initial, (value) => ({ past: [], present: createHistoryEntry(value), future: [], group: null, groupedAt: 0 }));
-  const setWebsite = useCallback((value: SetStateAction<WebsiteJSON>, setOptions: SetWebsiteOptions = {}) => dispatch({ type: "commit", value, options: setOptions, now: Date.now(), maxHistory, groupWindowMs }), [groupWindowMs, maxHistory]);
+  const setWebsite = useCallback((value: SetStateAction<WebsiteJSON>, setOptions: SetWebsiteOptions = {}) => {
+    dispatch({ type: "commit", value, options: setOptions, now: Date.now(), maxHistory, groupWindowMs });
+  }, [groupWindowMs, maxHistory]);
   const resetHistory = useCallback((value: WebsiteJSON, label = "Reset website", source: HistoryActionSource = "system") => dispatch({ type: "reset", value, label, source, now: Date.now() }), []);
   const clearHistory = useCallback(() => dispatch({ type: "clear" }), []);
   const undo = useCallback(() => dispatch({ type: "undo" }), []);

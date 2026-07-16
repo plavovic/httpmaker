@@ -58,6 +58,8 @@ export default function FloatingElementToolbar({ sectionId, elementKey, style, l
       </>}
       {elementKey === "imageUrl" && <><select aria-label="Image crop" value={style.objectFit ?? "cover"} onChange={(event) => onStyleChange({ objectFit: event.target.value as "cover" | "contain" })}><option value="cover">Crop to fill</option><option value="contain">Fit image</option></select></>}
       {isButton && <select aria-label="Button style" value={style.buttonStyle ?? "filled"} onChange={(event) => onStyleChange({ buttonStyle: event.target.value as "filled" | "outline" })}><option value="filled">Filled</option><option value="outline">Outline</option></select>}
+      <select aria-label="Animation" value={style.animation ?? "none"} onChange={(event) => onStyleChange({ animation: event.target.value as EditableElementStyle["animation"] })}><option value="none">No animation</option><option value="fade">Fade in</option><option value="slide-up">Slide up</option><option value="slide-left">Slide left</option><option value="slide-right">Slide right</option><option value="scale">Scale in</option><option value="float">Float</option><option value="pulse">Pulse</option></select>
+      <select aria-label="Animation speed" value={style.animationSpeed ?? "normal"} onChange={(event) => onStyleChange({ animationSpeed: event.target.value as EditableElementStyle["animationSpeed"] })}><option value="slow">Slow</option><option value="normal">Normal</option><option value="fast">Fast</option></select>
     </div>
     <div className="element-toolbar-row element-toolbar-fields">
       <input value={value} aria-label="Element content" placeholder={elementKey === "imageUrl" ? "Image URL" : "Content"} onChange={(event) => onValueChange(event.target.value)} />
