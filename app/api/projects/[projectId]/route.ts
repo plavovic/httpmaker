@@ -13,7 +13,6 @@ import {
 import { updateProjectSchema } from "@/features/projects/schemas/project.schema";
 import { updateProject } from "@/features/projects/server/project.repository";
 import { deleteProject } from "@/features/projects/server/project.repository";
-
 type ProjectRouteContext = {
   params: Promise<{
     projectId: string;
