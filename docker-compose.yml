@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: httpmaker-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: httpmaker
+      POSTGRES_PASSWORD: httpmaker_dev_password
+      POSTGRES_DB: httpmaker
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - httpmaker_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  httpmaker_postgres_data:
