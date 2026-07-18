@@ -69,6 +69,7 @@ model Project {
   id      String @id @default(cuid())
   name    String
   website Json
+  repositoryUrl String?
 
   ownerId String
   owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)

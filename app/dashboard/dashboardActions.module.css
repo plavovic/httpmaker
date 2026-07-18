@@ -1,0 +1,7 @@
+.row { grid-template-columns: minmax(220px, 1.5fr) minmax(150px, .7fr) minmax(150px, .7fr) minmax(250px, auto) !important; }
+.actions { display:flex; align-items:center; justify-content:flex-end; gap:7px; }
+.actions button,.actions a { border:1px solid var(--studio-line-strong); border-radius:7px; padding:6px 9px; background:var(--studio-raised); color:var(--studio-text); font:650 9px/1 inherit; text-decoration:none; cursor:pointer; }
+.actions button:hover,.actions a:hover { background:var(--studio-hover); }
+.actions button:disabled { opacity:.5; cursor:wait; }
+.actions .deleteButton { color:#fb7185; }
+@media(max-width:760px){.row{grid-template-columns:1fr!important}.actions{grid-column:1;justify-content:flex-start;flex-wrap:wrap}}

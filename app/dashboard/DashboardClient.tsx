@@ -9,6 +9,7 @@ import { EDITOR_THEME_STORAGE_KEY, isLightStudioTheme, readStoredEditorTheme, ST
 
 import styles from "./dashboard.module.css";
 import themeStyles from "./themes.module.css";
+import actionStyles from "./dashboardActions.module.css";
 
 type DashboardProject = {
   id: string;
@@ -16,6 +17,7 @@ type DashboardProject = {
   ownerId: string;
   createdAt: string;
   updatedAt: string;
+  repositoryUrl: string | null;
 };
 
 type Props = {
@@ -40,6 +42,10 @@ export default function DashboardClient({ user, initialProjects }: Props) {
   const [error, setError] = useState("");
   const [profileImage, setProfileImage] = useState(user.image);
   const [uploading, setUploading] = useState(false);
+  const [projects, setProjects] = useState(initialProjects);
+  const [busyProjectId, setBusyProjectId] = useState<string | null>(null);
+  const [repositoryProject, setRepositoryProject] = useState<DashboardProject | null>(null);
+  const [repositoryUrl, setRepositoryUrl] = useState("");
 
   useEffect(() => {
     setColorMode(readStoredEditorTheme());
@@ -108,6 +114,52 @@ export default function DashboardClient({ user, initialProjects }: Props) {
     reader.readAsDataURL(file);
   };
 
+  const deleteDashboardProject = async (project: DashboardProject) => {
+    if (busyProjectId || !window.confirm(`Delete “${project.name}”? This cannot be undone.`)) return;
+    setBusyProjectId(project.id);
+    setError("");
+    try {
+      const response = await fetch(`/api/projects/${encodeURIComponent(project.id)}`, { method: "DELETE" });
+      if (!response.ok) {
+        const body = await response.json();
+        throw new Error(body.error ?? "Unable to delete project.");
+      }
+      setProjects((current) => current.filter(({ id }) => id !== project.id));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to delete project.");
+    } finally {
+      setBusyProjectId(null);
+    }
+  };
+
+  const openRepositoryDialog = (project: DashboardProject) => {
+    setRepositoryProject(project);
+    setRepositoryUrl(project.repositoryUrl ?? "");
+    setError("");
+  };
+
+  const saveRepository = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!repositoryProject || busyProjectId) return;
+    setBusyProjectId(repositoryProject.id);
+    setError("");
+    try {
+      const response = await fetch(`/api/projects/${encodeURIComponent(repositoryProject.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repositoryUrl: repositoryUrl.trim() }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Unable to link repository.");
+      setProjects((current) => current.map((project) => project.id === repositoryProject.id ? { ...project, repositoryUrl: body.project.repositoryUrl } : project));
+      setRepositoryProject(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to link repository.");
+    } finally {
+      setBusyProjectId(null);
+    }
+  };
+
   if (!themeReady) return <main className={`${styles.shell} ${styles.loading}`} />;
 
   return (
@@ -118,7 +170,7 @@ export default function DashboardClient({ user, initialProjects }: Props) {
           <div><strong>HTTPMAKER</strong><small>Project workspace</small></div>
         </div>
         <div className={styles.toolbarActions}>
-          <label className={themeStyles.themePicker}><span className="sr-only">Studio theme</span><select value={colorMode} onChange={(event) => changeTheme(event.target.value as ColorMode)}>{STUDIO_THEMES.map((theme) => <option key={theme.value} value={theme.value}>{theme.label}</option>)}</select></label>
+          <label className={themeStyles.themePicker}><span className="sr-only">Studio theme</span><select value={colorMode} onChange={(event) => changeTheme(event.target.value as ColorMode)}>{STUDIO_THEMES.map((theme) => <option style={{ backgroundColor: theme.appearance === "dark" ? "#18202b" : "#ffffff", color: theme.appearance === "dark" ? "#f4f7fb" : "#211d29" }} key={theme.value} value={theme.value}>{theme.label}</option>)}</select></label>
           <button type="button" className={`${styles.createButton} ${themeStyles.accentButton}`} onClick={() => setModalOpen(true)}>Create new project</button>
           <div className={styles.profileWrap}>
             <button type="button" className={styles.avatarButton} onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen}>
@@ -143,16 +195,21 @@ export default function DashboardClient({ user, initialProjects }: Props) {
         </div>
         {error && <p className={styles.error}>{error}</p>}
         <div className={styles.projectList}>
-          <div className={styles.listHeader}><span>Project</span><span>Created</span><span>Last updated</span><span /></div>
-          {initialProjects.length === 0 ? (
+          <div className={`${styles.listHeader} ${actionStyles.row}`}><span>Project</span><span>Created</span><span>Last updated</span><span>Actions</span></div>
+          {projects.length === 0 ? (
             <div className={styles.empty}><strong>No projects yet</strong><p>Create your first project to open the editor.</p></div>
-          ) : initialProjects.map((project) => (
-            <button key={project.id} type="button" className={styles.projectRow} onClick={() => router.push(`/editor?projectId=${encodeURIComponent(project.id)}`)}>
+          ) : projects.map((project) => (
+            <div key={project.id} className={`${styles.projectRow} ${actionStyles.row}`} onClick={() => router.push(`/editor?projectId=${encodeURIComponent(project.id)}`)} role="link" tabIndex={0} onKeyDown={(event) => { if (event.key === "Enter") router.push(`/editor?projectId=${encodeURIComponent(project.id)}`); }}>
               <span className={styles.projectName}><i>{project.name.slice(0, 1).toUpperCase()}</i><strong>{project.name}</strong></span>
               <time dateTime={project.createdAt}>{dateFormatter.format(new Date(project.createdAt))}</time>
               <time dateTime={project.updatedAt}>{dateFormatter.format(new Date(project.updatedAt))}</time>
-              <span className={styles.openArrow}>→</span>
-            </button>
+              <span className={actionStyles.actions} onClick={(event) => event.stopPropagation()}>
+                {project.repositoryUrl && <a href={project.repositoryUrl} target="_blank" rel="noreferrer" title="Open repository">Repo</a>}
+                <button type="button" onClick={() => openRepositoryDialog(project)}>{project.repositoryUrl ? "Edit link" : "Link repository"}</button>
+                <button type="button" className={actionStyles.deleteButton} disabled={busyProjectId === project.id} onClick={() => deleteDashboardProject(project)}>Delete</button>
+                <span className={styles.openArrow}>→</span>
+              </span>
+            </div>
           ))}
         </div>
       </section>
@@ -163,6 +220,14 @@ export default function DashboardClient({ user, initialProjects }: Props) {
           <label>Project name<input autoFocus maxLength={100} value={projectName} onChange={(event) => setProjectName(event.target.value)} placeholder="My new website" required /></label>
           {error && <p className={styles.error}>{error}</p>}
           <div className={styles.modalActions}><button type="button" onClick={() => setModalOpen(false)}>Cancel</button><button className={themeStyles.accentButton} type="submit" disabled={creating}>{creating ? "Creating…" : "Create project"}</button></div>
+        </form>
+      </div>}
+      {repositoryProject && <div className={styles.backdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) setRepositoryProject(null); }}>
+        <form className={styles.modal} onSubmit={saveRepository}>
+          <div><span>REPOSITORY</span><h2>Link repository</h2><p>Attach an HTTPS repository URL to {repositoryProject.name}.</p></div>
+          <label>Repository URL<input autoFocus type="url" value={repositoryUrl} onChange={(event) => setRepositoryUrl(event.target.value)} placeholder="https://github.com/owner/repository" /></label>
+          {error && <p className={styles.error}>{error}</p>}
+          <div className={styles.modalActions}><button type="button" onClick={() => setRepositoryProject(null)}>Cancel</button>{repositoryProject.repositoryUrl && <button type="button" onClick={() => setRepositoryUrl("")}>Remove link</button>}<button className={themeStyles.accentButton} type="submit" disabled={busyProjectId === repositoryProject.id}>{busyProjectId === repositoryProject.id ? "Saving…" : "Save link"}</button></div>
         </form>
       </div>}
     </main>

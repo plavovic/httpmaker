@@ -36,6 +36,7 @@ export async function listProjectsByOwner(
       ownerId: true,
       createdAt: true,
       updatedAt: true,
+      repositoryUrl: true,
     },
   });
 }
@@ -83,6 +84,9 @@ export async function updateProject(
 
       ...(input.website !== undefined && {
         website: toPrismaJson(input.website),
+      }),
+      ...(input.repositoryUrl !== undefined && {
+        repositoryUrl: input.repositoryUrl || null,
       }),
     },
   });
