@@ -210,15 +210,20 @@ export default function DashboardClient({ user, initialProjects }: Props) {
           {projects.length === 0 ? (
             <div className={styles.empty}><strong>No projects yet</strong><p>Create your first project to open the editor.</p></div>
           ) : projects.map((project) => (
-            <div key={project.id} className={`${styles.projectRow} ${actionStyles.row}`} onClick={() => router.push(`/editor?projectId=${encodeURIComponent(project.id)}`)} role="link" tabIndex={0} onKeyDown={(event) => { if (event.key === "Enter") router.push(`/editor?projectId=${encodeURIComponent(project.id)}`); }}>
+            <div key={project.id} className={`${styles.projectRow} ${actionStyles.row}`}>
               <span className={styles.projectName}><i>{project.name.slice(0, 1).toUpperCase()}</i><strong>{project.name}</strong></span>
               <time dateTime={project.createdAt}>{dateFormatter.format(new Date(project.createdAt))}</time>
               <time dateTime={project.updatedAt}>{dateFormatter.format(new Date(project.updatedAt))}</time>
               <span className={actionStyles.actions} onClick={(event) => event.stopPropagation()}>
-                {project.repositoryUrl && <a href={project.repositoryUrl} target="_blank" rel="noreferrer" title="Open repository">Repo</a>}
-                <button type="button" onClick={() => openRepositoryDialog(project)}>{project.repositoryUrl ? "Edit link" : "Link repository"}</button>
-                <button type="button" className={actionStyles.deleteButton} disabled={busyProjectId === project.id} onClick={() => deleteDashboardProject(project)}>Delete</button>
-                <span className={styles.openArrow}>→</span>
+                <details className={actionStyles.optionsMenu}>
+                  <summary>Options<span aria-hidden="true">⌄</span></summary>
+                  <div>
+                    <button type="button" disabled={!project.repositoryUrl} title={project.repositoryUrl ? "Open the linked repository to push changes" : "Link a repository first"} onClick={() => { if (project.repositoryUrl) window.open(project.repositoryUrl, "_blank", "noopener,noreferrer"); }}>Push</button>
+                    <button type="button" onClick={() => openRepositoryDialog(project)}>{project.repositoryUrl ? "Edit repository link" : "Link repository"}</button>
+                    <button type="button" className={actionStyles.deleteButton} disabled={busyProjectId === project.id} onClick={() => deleteDashboardProject(project)}>Delete</button>
+                  </div>
+                </details>
+                <button type="button" className={actionStyles.loadButton} onClick={() => router.push(`/editor?projectId=${encodeURIComponent(project.id)}`)}>Load</button>
               </span>
             </div>
           ))}

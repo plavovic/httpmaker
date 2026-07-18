@@ -4,10 +4,13 @@
 .actions button:hover,.actions a:hover { background:var(--studio-hover); }
 .actions button:disabled { opacity:.5; cursor:wait; }
 .actions .deleteButton { color:#fb7185; }
+.actions .loadButton{border-color:var(--studio-accent);background:var(--studio-accent);color:#fff;padding-inline:14px}
+.optionsMenu{position:relative}.optionsMenu summary{display:flex;align-items:center;gap:8px;border:1px solid var(--studio-line-strong);border-radius:5px;padding:7px 10px;background:var(--studio-raised);color:var(--studio-text);font:650 9px/1 inherit;list-style:none;cursor:pointer}.optionsMenu summary::-webkit-details-marker{display:none}.optionsMenu summary span{color:var(--studio-muted);font-size:11px}.optionsMenu[open] summary{border-color:var(--studio-accent);background:var(--studio-hover)}.optionsMenu>div{position:absolute;z-index:30;top:calc(100% + 6px);right:0;display:grid;width:170px;overflow:hidden;border:1px solid var(--studio-line-strong);border-radius:6px;background:var(--studio-panel);box-shadow:0 16px 38px rgba(0,0,0,.24)}.actions .optionsMenu>div button{width:100%;border:0;border-bottom:1px solid var(--studio-line);border-radius:0!important;padding:10px 12px;background:transparent;text-align:left}.actions .optionsMenu>div button:last-child{border-bottom:0}.actions .optionsMenu>div button:disabled{color:var(--studio-muted);cursor:not-allowed}
 @media(max-width:760px){.row{grid-template-columns:1fr!important}.actions{grid-column:1;justify-content:flex-start;flex-wrap:wrap}}
 
 .sharp button:not([class*="avatarButton"]),.sharp input,.sharp select{border-radius:5px!important}
 .sharp [class*="projectList"],.sharp [class*="profileMenu"],.sharp [class*="modal"]{border-radius:7px!important}
+.sharp [class*="projectList"]{overflow:visible!important}
 .sharp [class*="mark"]:not([class*="avatar"]){border-radius:5px!important}
 
 .heroHeading{display:flex!important;flex-direction:column;justify-content:center!important;gap:20px!important;text-align:center;margin:0 auto 38px!important}
