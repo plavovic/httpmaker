@@ -40,6 +40,7 @@ export default function EditorPage() {
   const [saveState, setSaveState] = useState("All changes saved");
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [profileName, setProfileName] = useState("User");
+  const [ownerId, setOwnerId] = useState<string | null>(null);
   const [editorTab, setEditorTab] = useState<EditorTab>("ai");
   const [device, setDevice] = useState<DeviceMode>("desktop");
   const [pendingProposal, setPendingProposal] = useState<PendingProposal | null>(null);
@@ -85,9 +86,13 @@ export default function EditorPage() {
 
   useEffect(() => {
     fetch("/api/profile")
-      .then(async (response) => response.ok ? response.json() : null)
+      .then(async (response) => {
+        if (response.status === 401) { window.location.assign("/login"); return null; }
+        return response.ok ? response.json() : null;
+      })
       .then((profile) => {
         if (!profile) return;
+        setOwnerId(profile.id);
         setProfileImage(profile.image ?? null);
         setProfileName(profile.name ?? "User");
       })
@@ -211,11 +216,11 @@ export default function EditorPage() {
   }, []);
 
   useEffect(() => () => aiRequestRef.current?.abort(), []);
-  useEffect(()=>{listImageAssets().then(setAssets).catch(()=>setAssetError("The asset library could not be opened."))},[]);
+  useEffect(()=>{if(!ownerId)return;listImageAssets(ownerId).then(setAssets).catch(()=>setAssetError("The asset library could not be opened."))},[ownerId]);
 
-  const uploadFiles=async(files:File[])=>{if(!files.length)return;setAssetBusy(true);setAssetError("");try{const uploaded=[] as UploadedImageAsset[];for(const file of files){const asset=await createImageAsset(file);await saveImageAsset(asset);uploaded.push(asset)}setAssets(current=>[...uploaded,...current]);setAssetLibraryOpen(true)}catch(reason){setAssetError(reason instanceof Error?reason.message:"Image upload failed.")}finally{setAssetBusy(false)}};
+  const uploadFiles=async(files:File[])=>{if(!files.length||!ownerId)return;setAssetBusy(true);setAssetError("");try{const uploaded=[] as UploadedImageAsset[];for(const file of files){const asset=await createImageAsset(file,ownerId);await saveImageAsset(asset,ownerId);uploaded.push(asset)}setAssets(current=>[...uploaded,...current]);setAssetLibraryOpen(true)}catch(reason){setAssetError(reason instanceof Error?reason.message:"Image upload failed.")}finally{setAssetBusy(false)}};
   const chooseAsset=(asset:UploadedImageAsset)=>{if(!assetTarget)return;const reference=createAssetReference(asset.id);if(assetTarget==="__background__"){setWebsiteJSON(current=>({...current,isThemeCustomized:true,theme:{...current.theme,backgroundImageUrl:reference}}),{label:"Set page background"});setAssetLibraryOpen(false);return}setWebsiteJSON(current=>({...current,sections:current.sections.map(section=>section.id===assetTarget?{...section,props:{...section.props,imageUrl:reference}}:section)}),{label:"Replace image"});setSelection({sectionId:assetTarget,elementKey:"imageUrl"});setAssetLibraryOpen(false)};
-  const removeAsset=async(id:string)=>{await deleteImageAsset(id);setAssets(current=>current.filter(asset=>asset.id!==id))};
+  const removeAsset=async(id:string)=>{if(!ownerId)return;await deleteImageAsset(id,ownerId);setAssets(current=>current.filter(asset=>asset.id!==id))};
   const setAssetAsBackground=(asset:UploadedImageAsset)=>{setWebsiteJSON(current=>({...current,isThemeCustomized:true,theme:{...current.theme,backgroundImageUrl:createAssetReference(asset.id)}}),{label:"Set page background"});setAssetLibraryOpen(false)};
 
   const updateElement = (sectionId: string, elementKey: EditableElementKey, value: string) => setWebsiteJSON((current) => {
