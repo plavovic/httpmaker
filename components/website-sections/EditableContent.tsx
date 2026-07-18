@@ -6,9 +6,13 @@ type EditorProps = Pick<WebsiteSectionComponentProps, "section" | "theme" | "edi
 type EditableTextProps = EditorProps & { elementKey: EditableElementKey; children: ReactNode; className?: string };
 
 function visualStyle(props: EditorProps, key: EditableElementKey): CSSProperties {
-  const { buttonStyle: _buttonStyle, animation: _animation, animationSpeed: _animationSpeed, widthPercent, offsetX, offsetY, ...style } = props.elementStyles?.[key] ?? {};
+  const configured = props.elementStyles?.[key] ?? {};
+  const { buttonStyle, backgroundColor, borderColor, borderRadius, hoverEffect: _hoverEffect, hoverColor, hoverTextColor, animation: _animation, animationSpeed: _animationSpeed, widthPercent, offsetX, offsetY, ...style } = configured;
   const imageUsesGridTrack = key === "imageUrl" && (props.section.type === "hero" || props.section.type === "about");
-  return { ...style, position:offsetX||offsetY?"relative":undefined, left:offsetX?`${offsetX}px`:undefined, top:offsetY?`${offsetY}px`:undefined, ...(widthPercent ? { width: imageUsesGridTrack ? "100%" : `${widthPercent}%`, maxWidth: "100%" } : {}) };
+  const isButton = key === "buttonText" || key === "secondaryButtonText";
+  const filled = (buttonStyle ?? (key === "buttonText" ? "filled" : "outline")) === "filled";
+  const buttonVisual = isButton ? { backgroundColor: filled ? backgroundColor ?? props.theme.primaryColor : "transparent", borderColor: borderColor ?? props.theme.primaryColor, borderRadius: `${borderRadius ?? props.theme.borderRadius}px`, color: style.color ?? (filled ? props.theme.backgroundColor : props.theme.textColor), "--button-hover-color": hoverColor ?? props.theme.accentColor, "--button-hover-text": hoverTextColor ?? props.theme.backgroundColor } as CSSProperties : {};
+  return { ...style, ...buttonVisual, position:offsetX||offsetY?"relative":undefined, left:offsetX?`${offsetX}px`:undefined, top:offsetY?`${offsetY}px`:undefined, ...(widthPercent ? { width: imageUsesGridTrack ? "100%" : `${widthPercent}%`, maxWidth: "100%" } : {}) };
 }
 
 function motion(props: EditorProps, key: EditableElementKey) {
@@ -30,8 +34,10 @@ function select(props: EditorProps, key: EditableElementKey) {
 
 export function EditableText(props: EditableTextProps) {
   const selected = props.editable && props.selectedElementKey === props.elementKey;
+  const isButton = props.elementKey === "buttonText" || props.elementKey === "secondaryButtonText";
+  const hoverEffect = props.elementStyles?.[props.elementKey]?.hoverEffect ?? "none";
   const value = props.elementKey.startsWith("content.") ? props.section.content?.[props.elementKey] ?? props.children : props.children;
-  return <span {...motion(props, props.elementKey)} data-editor-element={props.elementKey} onClick={select(props, props.elementKey)} style={visualStyle(props, props.elementKey)} className={`${props.className ?? ""} editable-site-element ${props.editable ? "cursor-text rounded-sm outline outline-2 outline-offset-2" : ""} ${selected ? "outline-blue-500" : props.editable ? "outline-transparent hover:outline-blue-300" : ""}`}>{value}</span>;
+  return <span {...motion(props, props.elementKey)} data-editor-element={props.elementKey} data-button-hover={isButton ? hoverEffect : undefined} onClick={select(props, props.elementKey)} style={visualStyle(props, props.elementKey)} className={`${props.className ?? ""} editable-site-element ${isButton ? "editable-site-button" : ""} ${props.editable ? "cursor-text rounded-sm outline outline-2 outline-offset-2" : ""} ${selected ? "outline-blue-500" : props.editable ? "outline-transparent hover:outline-blue-300" : ""}`}>{value}</span>;
 }
 
 type EditableImageProps = EditorProps & { src: string; alt: string; className: string };

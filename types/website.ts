@@ -25,6 +25,8 @@ export type WebsiteSection = {
   type: SectionType;
   variant: SectionVariant;
   backgroundColor?: string;
+  backgroundImageUrl?: string;
+  backgroundImageFit?: "cover" | "contain";
   props: WebsiteSectionProps;
   elementStyles?: ElementStyleMap;
   elementLinks?: ElementLinkMap;
@@ -80,6 +82,12 @@ export type EditableElementStyle = {
   offsetX?: number;
   offsetY?: number;
   buttonStyle?: "filled" | "outline";
+  backgroundColor?: string;
+  borderColor?: string;
+  borderRadius?: number;
+  hoverEffect?: "none" | "glow" | "lift" | "scale" | "invert";
+  hoverColor?: string;
+  hoverTextColor?: string;
   animation?: "none" | "fade" | "slide-up" | "slide-left" | "slide-right" | "scale" | "float" | "pulse";
   animationSpeed?: "slow" | "normal" | "fast";
 };

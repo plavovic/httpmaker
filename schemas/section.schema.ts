@@ -12,6 +12,8 @@ const persistedSectionShape = {
   id: nonEmptyStringSchema,
   variant: sectionVariantSchema,
   backgroundColor: z.string().optional(),
+  backgroundImageUrl: z.string().optional(),
+  backgroundImageFit: z.enum(["cover", "contain"]).optional(),
   props: websiteSectionPropsSchema,
   elementStyles: elementStyleMapSchema.optional(),
   elementLinks: elementLinkMapSchema.optional(),

@@ -16,6 +16,12 @@ export const editableElementStyleSchema = z.object({
   offsetX: z.number().finite().min(-2000).max(2000).optional(),
   offsetY: z.number().finite().min(-2000).max(2000).optional(),
   buttonStyle: z.enum(["filled", "outline"]).optional(),
+  backgroundColor: nonEmptyStringSchema.optional(),
+  borderColor: nonEmptyStringSchema.optional(),
+  borderRadius: z.number().finite().min(0).max(100).optional(),
+  hoverEffect: z.enum(["none", "glow", "lift", "scale", "invert"]).optional(),
+  hoverColor: nonEmptyStringSchema.optional(),
+  hoverTextColor: nonEmptyStringSchema.optional(),
   animation: z.enum(["none", "fade", "slide-up", "slide-left", "slide-right", "scale", "float", "pulse"]).optional(),
   animationSpeed: animationSpeedSchema.optional(),
 }).strict();

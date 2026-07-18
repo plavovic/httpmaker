@@ -762,6 +762,13 @@ body {
 .site-section[style*="background-color"]>section,
 .site-section[style*="background-color"]>footer,
 .site-section[style*="background-color"]>div{background-color:var(--section-background)!important}
+.site-section[style*="background-image"]>section,.site-section[style*="background-image"]>footer,.site-section[style*="background-image"]>div{background-color:transparent!important;background-image:none!important}
+.site-section button:has(>.editable-site-button){border:0!important;padding:0!important;background:transparent!important;color:inherit!important}
+.editable-site-button{display:inline-block;border:1px solid;padding:.75rem 1.25rem;cursor:pointer;transition:transform .2s ease,box-shadow .2s ease,background-color .2s ease,color .2s ease,filter .2s ease}
+.editable-site-button[data-button-hover="glow"]:hover{box-shadow:0 0 10px var(--button-hover-color),0 0 28px color-mix(in srgb,var(--button-hover-color) 55%,transparent)}
+.editable-site-button[data-button-hover="lift"]:hover{transform:translateY(-4px);box-shadow:0 10px 24px rgba(0,0,0,.18)}
+.editable-site-button[data-button-hover="scale"]:hover{transform:scale(1.06)}
+.editable-site-button[data-button-hover="invert"]:hover{background:var(--button-hover-color)!important;color:var(--button-hover-text)!important;filter:invert(.08)}
 
 /* Sharper studio geometry. Keep profile and status dots circular. */
 .studio-shell .chat-message>p{border-radius:5px 9px 9px 9px!important}
@@ -769,6 +776,13 @@ body {
 .studio-shell .chat-composer,.studio-shell .ai-proposal,.studio-shell .editor-control-drawer{border-radius:7px!important}
 .studio-shell .ai-proposal-item,.studio-shell .ai-proposal-warnings,.studio-shell .editor-tabs,.studio-shell .studio-history-controls,.studio-shell .studio-device-switch,.studio-shell .studio-view-switch,.studio-shell button:not(.studio-profile-mark),.studio-shell input,.studio-shell textarea,.studio-shell select{border-radius:4px!important}
 .studio-shell .editor-tabs-indicator,.studio-shell .device-canvas,.studio-shell .element-toolbar,.studio-shell .section-action-menu{border-radius:5px!important}
+.section-properties{display:grid;gap:14px;color:var(--studio-text)}
+.section-properties-heading span{color:var(--studio-accent);font:750 8px/1 "Cascadia Code",Consolas,monospace;letter-spacing:.14em;text-transform:uppercase}.section-properties-heading h2{margin:7px 0 0;font-size:18px}
+.section-properties fieldset{display:grid;gap:11px;margin:0;border:1px solid var(--studio-line);border-radius:6px;padding:12px;background:color-mix(in srgb,var(--studio-raised) 55%,transparent)}
+.section-properties legend{padding:0 6px;color:var(--studio-muted);font-size:9px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}
+.section-properties label{display:grid;gap:6px;color:var(--studio-muted);font-size:10px;font-weight:650}.section-properties input:not([type="color"]),.section-properties select{width:100%;min-height:35px;border:1px solid var(--studio-line-strong);padding:0 9px;background:var(--studio-raised);color:var(--studio-text);font:inherit}.section-properties input[type="color"]{width:38px;height:35px;border:1px solid var(--studio-line-strong);padding:3px;background:var(--studio-raised)}
+.section-properties button{min-height:34px;border:1px solid var(--studio-line-strong);padding:0 10px;background:var(--studio-raised);color:var(--studio-text);font:650 9px/1 inherit;cursor:pointer}.section-properties button:hover,.section-properties button.selected{border-color:var(--studio-accent);background:var(--studio-hover)}
+.property-inline{display:flex;align-items:center;gap:6px}.property-inline>input:not([type="color"]){min-width:0;flex:1}.property-segments{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.property-color-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.property-color-grid label{justify-items:center;text-align:center}.section-properties output{float:right;color:var(--studio-text)}.section-properties small{color:var(--studio-muted);font-size:8px;font-weight:400;line-height:1.4}
 
 /* Shared six-palette studio themes. */
 .studio-shell[data-color-theme="sky"]{--studio-bg:#eaf5fc;--studio-panel:#f8fcff;--studio-raised:#fff;--studio-hover:#dceefa;--studio-line:rgba(48,103,133,.13);--studio-line-strong:rgba(48,103,133,.2);--studio-text:#203746;--studio-muted:#668292;--studio-accent:#69aeda;--studio-green:#58a9a0}

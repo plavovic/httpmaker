@@ -5,7 +5,7 @@ const ASSET_SCHEME = "asset://";
 export const createAssetReference = (id: string) => `${ASSET_SCHEME}${id}`;
 
 function mapWebsiteImages(website: WebsiteJSON, mapSource: (source: string) => string): WebsiteJSON {
- return {...website,theme:{...website.theme,backgroundImageUrl:website.theme.backgroundImageUrl?mapSource(website.theme.backgroundImageUrl):undefined},sections:website.sections.map(section=>({...section,props:{...section.props,imageUrl:mapSource(section.props.imageUrl),items:section.props.items?.map(mapSource)}}))};
+ return {...website,theme:{...website.theme,backgroundImageUrl:website.theme.backgroundImageUrl?mapSource(website.theme.backgroundImageUrl):undefined},sections:website.sections.map(section=>({...section,backgroundImageUrl:section.backgroundImageUrl?mapSource(section.backgroundImageUrl):undefined,props:{...section.props,imageUrl:mapSource(section.props.imageUrl),items:section.props.items?.map(mapSource)}}))};
 }
 
 export function compactWebsiteAssetReferences(website: WebsiteJSON, assets: UploadedImageAsset[]): WebsiteJSON {
