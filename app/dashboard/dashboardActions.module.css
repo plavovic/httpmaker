@@ -20,3 +20,9 @@
 .logo>span{margin-right:1px;color:#e6ad00;font-size:22px;font-weight:800;line-height:.8}
 .sharp[data-theme="dark"] .logo{color:#f7fbff}
 .sharp[data-theme="dark"] .logo>span{color:#9dd8f5}
+
+.cursorGlow{position:fixed;z-index:0;left:0;top:0;width:clamp(260px,32vw,480px);height:clamp(260px,32vw,480px);border-radius:50%!important;background:color-mix(in srgb,var(--studio-accent) 13%,transparent);filter:blur(85px);opacity:0;pointer-events:none;will-change:transform,opacity;transition:transform .42s cubic-bezier(.2,.7,.2,1),opacity .5s ease;mix-blend-mode:multiply}
+.sharp[data-theme="dark"] .cursorGlow{mix-blend-mode:screen;filter:blur(95px);opacity:0}
+.sharp>header{position:relative;z-index:20}
+.sharp>section{position:relative;z-index:1}
+@media(prefers-reduced-motion:reduce){.cursorGlow{display:none}}

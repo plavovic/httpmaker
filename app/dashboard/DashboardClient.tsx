@@ -2,7 +2,7 @@
 
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type PointerEvent } from "react";
 
 import type { ColorMode } from "@/types/website";
 import { EDITOR_THEME_STORAGE_KEY, isLightStudioTheme, readStoredEditorTheme } from "@/utils/editorStorage";
@@ -34,6 +34,7 @@ const dateFormatter = new Intl.DateTimeFormat(undefined, {
 export default function DashboardClient({ user, initialProjects }: Props) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cursorGlowRef = useRef<HTMLDivElement>(null);
   const [colorMode, setColorMode] = useState<ColorMode>("sky");
   const [themeReady, setThemeReady] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -163,10 +164,18 @@ export default function DashboardClient({ user, initialProjects }: Props) {
     }
   };
 
+  const moveCursorGlow = (event: PointerEvent<HTMLElement>) => {
+    const glow = cursorGlowRef.current;
+    if (!glow || event.pointerType === "touch") return;
+    glow.style.opacity = "1";
+    glow.style.transform = `translate3d(${event.clientX}px, ${event.clientY}px, 0) translate(-50%, -50%)`;
+  };
+
   if (!themeReady) return <main className={`${styles.shell} ${styles.loading}`} />;
 
   return (
-    <main data-theme={isLightStudioTheme(colorMode) ? "light" : "dark"} data-color-theme={colorMode} className={`ide-shell studio-shell ${styles.shell} ${themeStyles.themed} ${actionStyles.sharp}`}>
+    <main data-theme={isLightStudioTheme(colorMode) ? "light" : "dark"} data-color-theme={colorMode} className={`ide-shell studio-shell ${styles.shell} ${themeStyles.themed} ${actionStyles.sharp}`} onPointerMove={moveCursorGlow} onPointerLeave={() => { if (cursorGlowRef.current) cursorGlowRef.current.style.opacity = "0"; }}>
+      <div ref={cursorGlowRef} className={actionStyles.cursorGlow} aria-hidden="true" />
       <header className={styles.toolbar}>
         <div className={styles.brand}>
           <span className={actionStyles.logo} aria-label="HTTPMAKER"><span aria-hidden="true">{'{'}</span>HTTPMAKER</span>
