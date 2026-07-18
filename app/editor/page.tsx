@@ -10,7 +10,7 @@ import PreviewDashboard from "@/components/editor/PreviewDashboard";
 import { initialWebsite } from "@/data/initialWebsite";
 import WebsiteRenderer from "@/renderer/WebsiteRenderer";
 import type { ColorMode, EditableElementKey, EditableElementStyle, EditorSelection, ViewMode, WebsiteJSON } from "@/types/website";
-import { EDITOR_THEME_STORAGE_KEY, readStoredEditorTheme, readStoredWebsite, saveStoredWebsite } from "@/utils/editorStorage";
+import { EDITOR_THEME_STORAGE_KEY, isLightStudioTheme, readStoredEditorTheme, readStoredWebsite, saveStoredWebsite } from "@/utils/editorStorage";
 import { useWebsiteHistory } from "@/hooks/useWebsiteHistory";
 import { requestAiProposal, AiClientError } from "@/services/ai/client";
 import { applyWebsiteDesignPatchSafely } from "@/services/ai/applyWebsiteDesignPatchSafely";
@@ -33,7 +33,7 @@ export default function EditorPage() {
   const [history, setHistory] = useState<PromptHistoryItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [autoMode, setAutoMode] = useState(true);
-  const [colorMode, setColorMode] = useState<ColorMode>("light");
+  const [colorMode, setColorMode] = useState<ColorMode>("sky");
   const [storageReady, setStorageReady] = useState(false);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("Untitled site");
@@ -292,8 +292,8 @@ export default function EditorPage() {
   if (!storageReady) return <main data-theme="light" className="ide-shell h-screen" aria-label="Loading editor" />;
 
   return (
-    <main data-theme={colorMode} className="ide-shell studio-shell flex h-screen min-h-0 flex-col overflow-hidden">
-      <EditorToolbar profileImage={profileImage} profileName={profileName} projectName={projectName} saveState={saveState} colorMode={colorMode} onToggleColorMode={() => setColorMode((mode) => mode === "dark" ? "light" : "dark")} viewMode={viewMode} onViewModeChange={setViewMode} onOpenPreview={openPreview} onExport={()=>void exportWebsiteZip(resolveWebsiteAssetReferences(websiteJSON,assets))} editorTab={editorTab} onEditorTabChange={setEditorTab} device={device} onDeviceChange={setDevice} canUndo={canUndo} canRedo={canRedo} undoLabel={undoLabel} redoLabel={redoLabel} onUndo={undo} onRedo={redo} />
+    <main data-theme={isLightStudioTheme(colorMode) ? "light" : "dark"} data-color-theme={colorMode} className="ide-shell studio-shell flex h-screen min-h-0 flex-col overflow-hidden">
+      <EditorToolbar profileImage={profileImage} profileName={profileName} projectName={projectName} saveState={saveState} colorMode={colorMode} onColorModeChange={setColorMode} viewMode={viewMode} onViewModeChange={setViewMode} onOpenPreview={openPreview} onExport={()=>void exportWebsiteZip(resolveWebsiteAssetReferences(websiteJSON,assets))} editorTab={editorTab} onEditorTabChange={setEditorTab} device={device} onDeviceChange={setDevice} canUndo={canUndo} canRedo={canRedo} undoLabel={undoLabel} redoLabel={redoLabel} onUndo={undo} onRedo={redo} />
       <div className="studio-body flex min-h-0 flex-1">
         <EditorSidebar messages={messages} history={history} isProcessing={isProcessing} prompt={prompt} onPromptChange={setPrompt} autoMode={autoMode} onToggleAutoMode={() => setAutoMode((value) => !value)} onSubmit={handleSend} proposal={pendingProposal?.proposal ?? null} onApplyProposal={applyProposal} onDiscardProposal={discardProposal} />
         <section className="ide-workspace flex-1 min-h-0 overflow-hidden">

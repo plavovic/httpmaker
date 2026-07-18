@@ -43,7 +43,7 @@ export type WebsiteJSON = {
 
 export type ViewMode = "preview" | "dashboard" | "edit";
 
-export type ColorMode = "dark" | "light";
+export type ColorMode = "sky" | "matcha" | "iris" | "midnight" | "macao" | "vice";
 
 export type EditableElementKey =
   | "title"

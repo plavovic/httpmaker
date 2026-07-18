@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 
 import type { ColorMode } from "@/types/website";
-import { EDITOR_THEME_STORAGE_KEY, readStoredEditorTheme } from "@/utils/editorStorage";
+import { EDITOR_THEME_STORAGE_KEY, isLightStudioTheme, readStoredEditorTheme, STUDIO_THEMES } from "@/utils/editorStorage";
 
 import styles from "./dashboard.module.css";
+import themeStyles from "./themes.module.css";
 
 type DashboardProject = {
   id: string;
@@ -30,7 +31,7 @@ const dateFormatter = new Intl.DateTimeFormat(undefined, {
 export default function DashboardClient({ user, initialProjects }: Props) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [colorMode, setColorMode] = useState<ColorMode>("light");
+  const [colorMode, setColorMode] = useState<ColorMode>("sky");
   const [themeReady, setThemeReady] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -45,16 +46,13 @@ export default function DashboardClient({ user, initialProjects }: Props) {
     setThemeReady(true);
   }, []);
 
-  const toggleTheme = () => {
-    setColorMode((current) => {
-      const next = current === "dark" ? "light" : "dark";
-      try {
-        localStorage.setItem(EDITOR_THEME_STORAGE_KEY, next);
-      } catch {
-        // Theme switching still works when storage is unavailable.
-      }
-      return next;
-    });
+  const changeTheme = (next: ColorMode) => {
+    setColorMode(next);
+    try {
+      localStorage.setItem(EDITOR_THEME_STORAGE_KEY, next);
+    } catch {
+      // Theme switching still works when storage is unavailable.
+    }
   };
 
   const createProject = async (event: FormEvent) => {
@@ -113,17 +111,15 @@ export default function DashboardClient({ user, initialProjects }: Props) {
   if (!themeReady) return <main className={`${styles.shell} ${styles.loading}`} />;
 
   return (
-    <main data-theme={colorMode} className={`ide-shell studio-shell ${styles.shell}`}>
+    <main data-theme={isLightStudioTheme(colorMode) ? "light" : "dark"} data-color-theme={colorMode} className={`ide-shell studio-shell ${styles.shell} ${themeStyles.themed}`}>
       <header className={styles.toolbar}>
         <div className={styles.brand}>
           <span className={styles.mark}>H</span>
           <div><strong>HTTPMAKER</strong><small>Project workspace</small></div>
         </div>
         <div className={styles.toolbarActions}>
-          <button type="button" className={styles.themeButton} onClick={toggleTheme} aria-label="Toggle color theme">
-            {colorMode === "dark" ? "☀" : "◐"}
-          </button>
-          <button type="button" className={styles.createButton} onClick={() => setModalOpen(true)}>Create new project</button>
+          <label className={themeStyles.themePicker}><span className="sr-only">Studio theme</span><select value={colorMode} onChange={(event) => changeTheme(event.target.value as ColorMode)}>{STUDIO_THEMES.map((theme) => <option key={theme.value} value={theme.value}>{theme.label}</option>)}</select></label>
+          <button type="button" className={`${styles.createButton} ${themeStyles.accentButton}`} onClick={() => setModalOpen(true)}>Create new project</button>
           <div className={styles.profileWrap}>
             <button type="button" className={styles.avatarButton} onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen}>
               {profileImage ? <img src={profileImage} alt="" /> : <span>{user.name.slice(0, 1).toUpperCase()}</span>}
@@ -143,7 +139,7 @@ export default function DashboardClient({ user, initialProjects }: Props) {
       <section className={styles.workspace}>
         <div className={styles.heading}>
           <div><span>WORKSPACE</span><h1>Your projects</h1><p>Continue building or start a fresh website.</p></div>
-          <button type="button" className={styles.createButton} onClick={() => setModalOpen(true)}>+ Create new project</button>
+          <button type="button" className={`${styles.createButton} ${themeStyles.accentButton}`} onClick={() => setModalOpen(true)}>+ Create new project</button>
         </div>
         {error && <p className={styles.error}>{error}</p>}
         <div className={styles.projectList}>
@@ -166,7 +162,7 @@ export default function DashboardClient({ user, initialProjects }: Props) {
           <div><span>NEW PROJECT</span><h2>Create a website</h2><p>Name your project. You can change this later.</p></div>
           <label>Project name<input autoFocus maxLength={100} value={projectName} onChange={(event) => setProjectName(event.target.value)} placeholder="My new website" required /></label>
           {error && <p className={styles.error}>{error}</p>}
-          <div className={styles.modalActions}><button type="button" onClick={() => setModalOpen(false)}>Cancel</button><button type="submit" disabled={creating}>{creating ? "Creating…" : "Create project"}</button></div>
+          <div className={styles.modalActions}><button type="button" onClick={() => setModalOpen(false)}>Cancel</button><button className={themeStyles.accentButton} type="submit" disabled={creating}>{creating ? "Creating…" : "Create project"}</button></div>
         </form>
       </div>}
     </main>

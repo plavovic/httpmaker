@@ -3,6 +3,15 @@ import { normalizeWebsite } from "@/utils/normalizeWebsite";
 import { safelyParseWebsiteData, upgradeLegacyWebsiteData } from "@/schemas/website.schema";
 export const WEBSITE_STORAGE_KEY = "httpmaker.website.v1";
 export const EDITOR_THEME_STORAGE_KEY = "httpmaker.editor-theme.v1";
+export const STUDIO_THEMES: Array<{ value: ColorMode; label: string; appearance: "light" | "dark" }> = [
+  { value: "sky", label: "Sky", appearance: "light" },
+  { value: "matcha", label: "Matcha", appearance: "light" },
+  { value: "iris", label: "Iris", appearance: "light" },
+  { value: "midnight", label: "Midnight", appearance: "dark" },
+  { value: "macao", label: "Macao", appearance: "dark" },
+  { value: "vice", label: "Vice", appearance: "dark" },
+];
+export function isLightStudioTheme(theme: ColorMode): boolean { return theme === "sky" || theme === "matcha" || theme === "iris"; }
 export function saveStoredWebsite(website: WebsiteJSON): boolean { try { localStorage.setItem(WEBSITE_STORAGE_KEY, JSON.stringify(website)); return true; } catch { return false; } }
 export function readStoredWebsite(): WebsiteJSON | null {
   try {
@@ -18,4 +27,11 @@ export function readStoredWebsite(): WebsiteJSON | null {
     return null;
   }
 }
-export function readStoredEditorTheme(): ColorMode { try { return localStorage.getItem(EDITOR_THEME_STORAGE_KEY) === "dark" ? "dark" : "light"; } catch { return "light"; } }
+export function readStoredEditorTheme(): ColorMode {
+  try {
+    const stored = localStorage.getItem(EDITOR_THEME_STORAGE_KEY);
+    if (stored === "light") return "sky";
+    if (stored === "dark") return "midnight";
+    return STUDIO_THEMES.some((theme) => theme.value === stored) ? stored as ColorMode : "sky";
+  } catch { return "sky"; }
+}
