@@ -763,6 +763,13 @@ body {
 .site-section[style*="background-color"]>footer,
 .site-section[style*="background-color"]>div{background-color:var(--section-background)!important}
 
+/* Sharper studio geometry. Keep profile and status dots circular. */
+.studio-shell .chat-message>p{border-radius:5px 9px 9px 9px!important}
+.studio-shell .chat-message-user>p{border-radius:9px 5px 9px 9px!important}
+.studio-shell .chat-composer,.studio-shell .ai-proposal,.studio-shell .editor-control-drawer{border-radius:7px!important}
+.studio-shell .ai-proposal-item,.studio-shell .ai-proposal-warnings,.studio-shell .editor-tabs,.studio-shell .studio-history-controls,.studio-shell .studio-device-switch,.studio-shell .studio-view-switch,.studio-shell button:not(.studio-profile-mark),.studio-shell input,.studio-shell textarea,.studio-shell select{border-radius:4px!important}
+.studio-shell .editor-tabs-indicator,.studio-shell .device-canvas,.studio-shell .element-toolbar,.studio-shell .section-action-menu{border-radius:5px!important}
+
 /* Shared six-palette studio themes. */
 .studio-shell[data-color-theme="sky"]{--studio-bg:#eaf5fc;--studio-panel:#f8fcff;--studio-raised:#fff;--studio-hover:#dceefa;--studio-line:rgba(48,103,133,.13);--studio-line-strong:rgba(48,103,133,.2);--studio-text:#203746;--studio-muted:#668292;--studio-accent:#69aeda;--studio-green:#58a9a0}
 .studio-shell[data-color-theme="matcha"]{--studio-bg:#edf6ec;--studio-panel:#fbfef9;--studio-raised:#fff;--studio-hover:#e0efdc;--studio-line:rgba(62,103,67,.13);--studio-line-strong:rgba(62,103,67,.2);--studio-text:#263d2a;--studio-muted:#6d846f;--studio-accent:#79ad78;--studio-green:#5c9d68}

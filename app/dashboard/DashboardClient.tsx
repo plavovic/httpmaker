@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 
 import type { ColorMode } from "@/types/website";
-import { EDITOR_THEME_STORAGE_KEY, isLightStudioTheme, readStoredEditorTheme, STUDIO_THEMES } from "@/utils/editorStorage";
+import { EDITOR_THEME_STORAGE_KEY, isLightStudioTheme, readStoredEditorTheme } from "@/utils/editorStorage";
+import StudioThemePicker from "@/components/editor/StudioThemePicker";
 
 import styles from "./dashboard.module.css";
 import themeStyles from "./themes.module.css";
@@ -46,6 +47,8 @@ export default function DashboardClient({ user, initialProjects }: Props) {
   const [busyProjectId, setBusyProjectId] = useState<string | null>(null);
   const [repositoryProject, setRepositoryProject] = useState<DashboardProject | null>(null);
   const [repositoryUrl, setRepositoryUrl] = useState("");
+  const workspaceOwner = user.name.trim() || "Your";
+  const workspaceTitle = workspaceOwner === "Your" ? "Your workspace" : `${workspaceOwner}${workspaceOwner.toLowerCase().endsWith("s") ? "’" : "’s"} workspace`;
 
   useEffect(() => {
     setColorMode(readStoredEditorTheme());
@@ -163,14 +166,13 @@ export default function DashboardClient({ user, initialProjects }: Props) {
   if (!themeReady) return <main className={`${styles.shell} ${styles.loading}`} />;
 
   return (
-    <main data-theme={isLightStudioTheme(colorMode) ? "light" : "dark"} data-color-theme={colorMode} className={`ide-shell studio-shell ${styles.shell} ${themeStyles.themed}`}>
+    <main data-theme={isLightStudioTheme(colorMode) ? "light" : "dark"} data-color-theme={colorMode} className={`ide-shell studio-shell ${styles.shell} ${themeStyles.themed} ${actionStyles.sharp}`}>
       <header className={styles.toolbar}>
         <div className={styles.brand}>
-          <span className={styles.mark}>H</span>
-          <div><strong>HTTPMAKER</strong><small>Project workspace</small></div>
+          <span className={actionStyles.logo} aria-label="HTTPMAKER"><span aria-hidden="true">{'{'}</span>HTTPMAKER</span>
         </div>
         <div className={styles.toolbarActions}>
-          <label className={themeStyles.themePicker}><span className="sr-only">Studio theme</span><select value={colorMode} onChange={(event) => changeTheme(event.target.value as ColorMode)}>{STUDIO_THEMES.map((theme) => <option style={{ backgroundColor: theme.appearance === "dark" ? "#18202b" : "#ffffff", color: theme.appearance === "dark" ? "#f4f7fb" : "#211d29" }} key={theme.value} value={theme.value}>{theme.label}</option>)}</select></label>
+          <StudioThemePicker value={colorMode} onChange={changeTheme} />
           <button type="button" className={`${styles.createButton} ${themeStyles.accentButton}`} onClick={() => setModalOpen(true)}>Create new project</button>
           <div className={styles.profileWrap}>
             <button type="button" className={styles.avatarButton} onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen}>
@@ -189,8 +191,8 @@ export default function DashboardClient({ user, initialProjects }: Props) {
       </header>
 
       <section className={styles.workspace}>
-        <div className={styles.heading}>
-          <div><span>WORKSPACE</span><h1>Your projects</h1><p>Continue building or start a fresh website.</p></div>
+        <div className={`${styles.heading} ${actionStyles.heroHeading}`}>
+          <div><h1>{workspaceTitle}</h1><p>Continue or start the journey.</p></div>
           <button type="button" className={`${styles.createButton} ${themeStyles.accentButton}`} onClick={() => setModalOpen(true)}>+ Create new project</button>
         </div>
         {error && <p className={styles.error}>{error}</p>}
