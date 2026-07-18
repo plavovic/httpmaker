@@ -2,8 +2,17 @@
 
 import { useState } from 'react';
 
-export default function Button() {
-  const text = 'LAUNCH JOURNEY';
+type ButtonProps = {
+  text?: string;
+  type?: 'button' | 'submit' | 'reset';
+  fullWidth?: boolean;
+};
+
+export default function Button({
+  text = 'LAUNCH JOURNEY',
+  type = 'button',
+  fullWidth = false,
+}: ButtonProps) {
 
   const [displayText, setDisplayText] = useState(text);
   const [scrambling, setScrambling] = useState(false);
@@ -58,8 +67,9 @@ export default function Button() {
 
   return (
     <button
+      type={type}
       onMouseEnter={handleMouseEnter}
-      className="ui-btn"
+      className={`ui-btn${fullWidth ? ' ui-btn--full' : ''}`}
     >
       <span>{displayText}</span>
 
@@ -92,6 +102,15 @@ export default function Button() {
 
         .ui-btn:hover {
           background: #ffc933;
+        }
+
+        .ui-btn--full {
+          width: 100%;
+        }
+
+        .ui-btn:focus-visible {
+          outline: 2px solid #ffc933;
+          outline-offset: 3px;
         }
 
         .ui-btn span {

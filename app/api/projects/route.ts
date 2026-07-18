@@ -1,17 +1,18 @@
 
+import { auth } from "@/auth";
 import { createProjectSchema } from "@/features/projects/schemas/project.schema";
 import { createProject } from "@/features/projects/server/project.repository";
-
-
-import { getDevelopmentUserId } from "@/features/projects/server/development-user";
-
 import { listProjectsByOwner } from "@/features/projects/server/project.repository";
 
 export async function GET() {
+    const session = await auth();
+    const ownerId = session?.user?.id;
+
+    if (!ownerId) {
+        return Response.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
     try {
-        const ownerId = await getDevelopmentUserId();
-
-
         const projects = await listProjectsByOwner(ownerId);
 
         return Response.json(
@@ -37,6 +38,13 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const session = await auth();
+  const ownerId = session?.user?.id;
+
+  if (!ownerId) {
+    return Response.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {
@@ -67,8 +75,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    const ownerId = await getDevelopmentUserId();
-
     const project = await createProject(
       ownerId,
       result.data,

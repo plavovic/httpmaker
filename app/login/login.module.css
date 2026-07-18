@@ -19,9 +19,13 @@
 .title {
   margin: 0;
   text-align: center;
+  color: #ffffff;
+  font-family: inherit;
   font-size: 1.5rem;
   line-height: 2rem;
-  font-weight: 700;
+  font-weight: 900;
+  letter-spacing: 0.15rem;
+  text-transform: uppercase;
 }
 
 .description {
@@ -30,6 +34,49 @@
   color: rgb(156, 163, 175);
   font-size: 0.875rem;
   line-height: 1.5rem;
+}
+
+.credentialsForm {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.field label {
+  color: rgb(229, 231, 235);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.field input {
+  width: 100%;
+  min-height: 46px;
+  box-sizing: border-box;
+  border: 1px solid rgb(55, 65, 81);
+  border-radius: 0.375rem;
+  background: rgb(9, 9, 11);
+  color: rgb(243, 244, 246);
+  padding: 0.75rem 0.875rem;
+  font: inherit;
+  font-size: 0.875rem;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.field input::placeholder {
+  color: rgb(107, 114, 128);
+}
+
+.field input:focus {
+  border-color: rgb(250, 204, 21);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.16);
 }
 
 .socialMessage {

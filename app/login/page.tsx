@@ -1,53 +1,10 @@
-/*import { signIn } from "@/auth";
-
-export default function LoginPage() {
-  return (
-    <main>
-      <h1>Sign in to HTTPMAKER</h1>
-
-      <form
-        action={async () => {
-          "use server";
-
-          await signIn("google", {
-            redirectTo: "/dashboard",
-          });
-        }}
-      >
-        <button type="submit">
-          Continue with Google
-        </button>
-      </form>
-
-      <form
-        action={async () => {
-          "use server";
-
-          await signIn("github", {
-            redirectTo: "/dashboard",
-          });
-        }}
-      >
-        <button type="submit">
-          Continue with GitHub
-        </button>
-      </form>
-    </main>
-  );
-} */
-
 "use client";
 
 import { signIn } from "next-auth/react";
+import Button from "@/components/Button";
 import styles from "./login.module.css";
 
 export default function LoginPage() {
-  async function handleGoogleLogin() {
-    await signIn("google", {
-      callbackUrl: "/dashboard",
-    });
-  }
-
   async function handleGitHubLogin() {
     await signIn("github", {
       callbackUrl: "/dashboard",
@@ -63,6 +20,37 @@ export default function LoginPage() {
           Sign in to continue building your website with HTTPMAKER.
         </p>
 
+        <form
+          className={styles.credentialsForm}
+          onSubmit={(event) => event.preventDefault()}
+        >
+          <div className={styles.field}>
+            <label htmlFor="email">Email</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              required
+            />
+          </div>
+
+          <div className={styles.field}>
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              placeholder="Enter your password"
+              required
+            />
+          </div>
+
+          <Button text="SIGN UP" type="submit" fullWidth />
+        </form>
+
         <div className={styles.socialMessage}>
           <div className={styles.line} />
           <p className={styles.message}>Continue with</p>
@@ -70,15 +58,6 @@ export default function LoginPage() {
         </div>
 
         <div className={styles.socialButtons}>
-          <button
-            type="button"
-            className={styles.socialButton}
-            onClick={handleGoogleLogin}
-          >
-            <GoogleIcon />
-            <span>Continue with Google</span>
-          </button>
-
           <button
             type="button"
             className={styles.socialButton}
@@ -94,14 +73,6 @@ export default function LoginPage() {
         </p>
       </section>
     </main>
-  );
-}
-
-function GoogleIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 32 32">
-      <path d="M16.318 13.714v5.484h9.078c-.37 2.354-2.745 6.901-9.078 6.901-5.458 0-9.917-4.521-9.917-10.099S10.86 5.901 16.318 5.901c3.109 0 5.193 1.318 6.38 2.464l4.339-4.182C24.251 1.584 20.641.001 16.318.001 7.474.001.318 7.152.318 16.001s7.156 16 16 16c9.234 0 15.365-6.49 15.365-15.635 0-1.052-.115-1.854-.255-2.651z" />
-    </svg>
   );
 }
 

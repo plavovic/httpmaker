@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import {
   findProjectByIdAndOwner,
 } from "@/features/projects/server/project.repository";
@@ -5,10 +6,6 @@ import {
 import {
   projectParamsSchema,
 } from "@/features/projects/schemas/project.schema";
-
-import {
-  getDevelopmentUserId,
-} from "@/features/projects/server/development-user";
 
 import { updateProjectSchema } from "@/features/projects/schemas/project.schema";
 import { updateProject } from "@/features/projects/server/project.repository";
@@ -23,16 +20,16 @@ export async function GET(
   _request: Request,
   context: ProjectRouteContext,
 ) {
+  const session = await auth();
+  const ownerId = session?.user?.id;
+
+  if (!ownerId) {
+    return Response.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
   try {
     const params = await context.params;
-
-console.log("RECEIVED PARAMS:", params);
-
-const paramsResult = projectParamsSchema.safeParse(params);
-
-console.log("PARAM VALIDATION:", paramsResult);
-
-    
+    const paramsResult = projectParamsSchema.safeParse(params);
 
     if (!paramsResult.success) {
       return Response.json(
@@ -49,34 +46,16 @@ console.log("PARAM VALIDATION:", paramsResult);
     const projectId =
       paramsResult.data.projectId;
 
-    const ownerId =
-      await getDevelopmentUserId();
-
-    console.log("Project lookup:", {
-      projectId,
-      ownerId,
-    });
-
     const project =
       await findProjectByIdAndOwner(
         projectId,
         ownerId,
       );
 
-    console.log("Project lookup result:", {
-      found: project !== null,
-      projectId: project?.id,
-      projectOwnerId: project?.ownerId,
-    });
-
     if (!project) {
       return Response.json(
         {
           error: "Project not found.",
-          debug: {
-            requestedProjectId: projectId,
-            developmentOwnerId: ownerId,
-          },
         },
         {
           status: 404,
@@ -113,6 +92,13 @@ export async function PATCH(
   request: Request,
   context: ProjectRouteContext,
 ) {
+  const session = await auth();
+  const ownerId = session?.user?.id;
+
+  if (!ownerId) {
+    return Response.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
   const params = await context.params;
   const paramsResult = projectParamsSchema.safeParse(params);
 
@@ -152,8 +138,6 @@ export async function PATCH(
   }
 
   try {
-    const ownerId = await getDevelopmentUserId();
-
     const updateResult = await updateProject(
       paramsResult.data.projectId,
       ownerId,
@@ -196,6 +180,13 @@ export async function DELETE(
   _request: Request,
   context: ProjectRouteContext,
 ) {
+  const session = await auth();
+  const ownerId = session?.user?.id;
+
+  if (!ownerId) {
+    return Response.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
   const params = await context.params;
   const paramsResult = projectParamsSchema.safeParse(params);
 
@@ -210,8 +201,6 @@ export async function DELETE(
   }
 
   try {
-    const ownerId = await getDevelopmentUserId();
-
     const deleteResult = await deleteProject(
       paramsResult.data.projectId,
       ownerId,

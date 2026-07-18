@@ -19,6 +19,7 @@ import AssetLibrary from "@/components/editor/assets/AssetLibrary";
 import type { UploadedImageAsset } from "@/types/uploadedAsset";
 import { compactWebsiteAssetReferences, createAssetReference, createImageAsset, deleteImageAsset, listImageAssets, resolveWebsiteAssetReferences, saveImageAsset } from "@/utils/assetStorage";
 import { exportWebsiteZip } from "@/utils/exportWebsiteZip";
+import { safelyParseWebsiteData } from "@/schemas/website.schema";
 
 type PendingProposal = { proposal: AiPatchProposal; previewWebsite: WebsiteJSON; mode: AiMode; selectedSectionId?: string };
 const modeForPrompt = (message: string): AiMode => /\b(add|insert|create)\b.*\b(section|hero|navbar|about|carousel|features|contact|footer)\b/i.test(message) ? "add-section" : /\b(restyle|theme|palette|colors?|dark|light|design)\b/i.test(message) ? "restyle-website" : /\b(rewrite|copy|content)\b/i.test(message) ? "rewrite-content" : "edit-selected-section";
@@ -34,6 +35,11 @@ export default function EditorPage() {
   const [autoMode, setAutoMode] = useState(true);
   const [colorMode, setColorMode] = useState<ColorMode>("light");
   const [storageReady, setStorageReady] = useState(false);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [projectName, setProjectName] = useState("Untitled site");
+  const [saveState, setSaveState] = useState("All changes saved");
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [profileName, setProfileName] = useState("User");
   const [editorTab, setEditorTab] = useState<EditorTab>("ai");
   const [device, setDevice] = useState<DeviceMode>("desktop");
   const [pendingProposal, setPendingProposal] = useState<PendingProposal | null>(null);
@@ -47,11 +53,46 @@ export default function EditorPage() {
   const dragStateRef = useRef<{ isDragging: boolean; startX: number; startY: number }>({ isDragging: false, startX: 0, startY: 0 });
 
   useEffect(() => {
-    const storedWebsite = readStoredWebsite();
-    if (storedWebsite) replaceWebsite(storedWebsite);
-    setColorMode(readStoredEditorTheme());
-    setStorageReady(true);
+    let cancelled = false;
+    const load = async () => {
+      setColorMode(readStoredEditorTheme());
+      const projectId = new URLSearchParams(window.location.search).get("projectId");
+      if (projectId) {
+        try {
+          const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}`);
+          if (response.status === 401) { window.location.assign("/login"); return; }
+          const body = await response.json();
+          if (!response.ok) throw new Error(body.error ?? "Unable to load project.");
+          const websiteResult = safelyParseWebsiteData(body.project.website);
+          if (!websiteResult.success) throw new Error("The saved project contains invalid website data.");
+          if (!cancelled) {
+            replaceWebsite(websiteResult.data);
+            setActiveProjectId(projectId);
+            setProjectName(body.project.name);
+          }
+        } catch (reason) {
+          if (!cancelled) setAssetError(reason instanceof Error ? reason.message : "Unable to load project.");
+        }
+      } else {
+        const storedWebsite = readStoredWebsite();
+        if (storedWebsite && !cancelled) replaceWebsite(storedWebsite);
+      }
+      if (!cancelled) setStorageReady(true);
+    };
+    void load();
+    return () => { cancelled = true; };
   }, [replaceWebsite]);
+
+  useEffect(() => {
+    fetch("/api/profile")
+      .then(async (response) => response.ok ? response.json() : null)
+      .then((profile) => {
+        if (!profile) return;
+        setProfileImage(profile.image ?? null);
+        setProfileName(profile.name ?? "User");
+      })
+      .catch(() => { /* The editor can use the initial fallback without profile data. */ });
+  }, []);
 
   useEffect(() => {
     const handleHistoryShortcut = (event: KeyboardEvent) => {
@@ -85,6 +126,25 @@ export default function EditorPage() {
     saveStoredWebsite(compactWebsiteAssetReferences(websiteJSON,assets));
     try { localStorage.setItem(EDITOR_THEME_STORAGE_KEY, colorMode); } catch { /* The editor remains usable when browser storage is unavailable. */ }
   }, [assets, colorMode, storageReady, websiteJSON]);
+
+  useEffect(() => {
+    if (!storageReady || !activeProjectId) return;
+    setSaveState("Saving…");
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/projects/${encodeURIComponent(activeProjectId)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ website: compactWebsiteAssetReferences(websiteJSON, assets) }),
+        });
+        if (!response.ok) throw new Error();
+        setSaveState("All changes saved");
+      } catch {
+        setSaveState("Save failed");
+      }
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [activeProjectId, assets, storageReady, websiteJSON]);
 
   useEffect(() => {
     if (editorTab === "ai") return;
@@ -233,7 +293,7 @@ export default function EditorPage() {
 
   return (
     <main data-theme={colorMode} className="ide-shell studio-shell flex h-screen min-h-0 flex-col overflow-hidden">
-      <EditorToolbar colorMode={colorMode} onToggleColorMode={() => setColorMode((mode) => mode === "dark" ? "light" : "dark")} viewMode={viewMode} onViewModeChange={setViewMode} onOpenPreview={openPreview} onExport={()=>void exportWebsiteZip(resolveWebsiteAssetReferences(websiteJSON,assets))} editorTab={editorTab} onEditorTabChange={setEditorTab} device={device} onDeviceChange={setDevice} canUndo={canUndo} canRedo={canRedo} undoLabel={undoLabel} redoLabel={redoLabel} onUndo={undo} onRedo={redo} />
+      <EditorToolbar profileImage={profileImage} profileName={profileName} projectName={projectName} saveState={saveState} colorMode={colorMode} onToggleColorMode={() => setColorMode((mode) => mode === "dark" ? "light" : "dark")} viewMode={viewMode} onViewModeChange={setViewMode} onOpenPreview={openPreview} onExport={()=>void exportWebsiteZip(resolveWebsiteAssetReferences(websiteJSON,assets))} editorTab={editorTab} onEditorTabChange={setEditorTab} device={device} onDeviceChange={setDevice} canUndo={canUndo} canRedo={canRedo} undoLabel={undoLabel} redoLabel={redoLabel} onUndo={undo} onRedo={redo} />
       <div className="studio-body flex min-h-0 flex-1">
         <EditorSidebar messages={messages} history={history} isProcessing={isProcessing} prompt={prompt} onPromptChange={setPrompt} autoMode={autoMode} onToggleAutoMode={() => setAutoMode((value) => !value)} onSubmit={handleSend} proposal={pendingProposal?.proposal ?? null} onApplyProposal={applyProposal} onDiscardProposal={discardProposal} />
         <section className="ide-workspace flex-1 min-h-0 overflow-hidden">
