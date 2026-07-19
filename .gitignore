@@ -33,3 +33,6 @@ Thumbs.db
 .vscode/
 .idea/
 /app/generated/prisma
+
+# KEY
+*.pem
