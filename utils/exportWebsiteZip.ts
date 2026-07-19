@@ -29,6 +29,26 @@ function stylesheet(website: WebsiteJSON) {
   return `*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:${theme.backgroundColor};color:${theme.textColor};font-family:${JSON.stringify(theme.bodyFont)},sans-serif}main{width:min(1200px,100%);margin:auto;padding:clamp(12px,3vw,36px)}.section{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:clamp(24px,5vw,64px);align-items:center;margin:0;padding:clamp(32px,7vw,90px);border-radius:${theme.borderRadius}px;background:${theme.surfaceColor};overflow:hidden}.section+ .section{margin-top:18px}.section.brutalist{border:3px solid ${theme.textColor};border-radius:0;box-shadow:8px 8px 0 ${theme.primaryColor}}nav.section,footer.section{grid-template-columns:1fr auto;padding:24px clamp(24px,5vw,60px)}h1,h2{max-width:18ch;margin:.2em 0;font-family:${JSON.stringify(theme.headingFont)},serif;line-height:.98;overflow-wrap:anywhere}h1{font-size:clamp(2.5rem,8vw,7rem)}h2{font-size:clamp(2rem,5vw,4.5rem)}p{max-width:60ch;color:${theme.mutedTextColor};font-size:clamp(1rem,2vw,1.25rem);line-height:1.65}.section-image{display:block;max-width:100%;height:auto;max-height:650px;margin-inline:auto;border-radius:${theme.borderRadius}px}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}.actions a{display:inline-block;border:1px solid ${theme.primaryColor};border-radius:${theme.borderRadius}px;padding:12px 18px;background:${theme.primaryColor};color:${theme.backgroundColor};text-decoration:none}.actions a.secondary{background:transparent;color:${theme.textColor}}small{color:${theme.accentColor};font-weight:700;letter-spacing:.12em;text-transform:uppercase}@media(max-width:720px){main{padding:0}.section{grid-template-columns:1fr;border-radius:0;padding:36px 20px}.section-image{grid-row:1}nav.section,footer.section{grid-template-columns:1fr}.section+.section{margin-top:0}}`;
 }
 
+export type WebsiteExportFiles = {
+  "index.html": string;
+  "styles.css": string;
+  "website.json": string;
+  "README.md": string;
+};
+
+export function buildWebsiteFiles(website: WebsiteJSON): WebsiteExportFiles {
+  const title = website.sections.find((section) => section.type === "hero")?.props.title ?? "Website";
+  const description = website.sections.find((section) => section.type === "hero")?.props.subtitle ?? "Exported website";
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="${escapeHtml(description)}"><title>${escapeHtml(title)}</title><link rel="stylesheet" href="styles.css"></head><body><main>${website.sections.map(sectionMarkup).join("")}</main></body></html>`;
+
+  return {
+    "index.html": html,
+    "styles.css": stylesheet(website),
+    "website.json": JSON.stringify(website, null, 2),
+    "README.md": "# HTTPMAKER website\n\nOpen `index.html` in a browser or deploy these files to any static host. No HTTPMAKER editor or AI code is included.\n",
+  };
+}
+
 export async function buildWebsiteZip(website: WebsiteJSON): Promise<Uint8Array> {
   const zip = new JSZip();
   let imageIndex = 0;
@@ -56,14 +76,8 @@ export async function buildWebsiteZip(website: WebsiteJSON): Promise<Uint8Array>
       },
     })),
   };
-  const title = portable.sections.find((section) => section.type === "hero")?.props.title ?? "Website";
-  const description = portable.sections.find((section) => section.type === "hero")?.props.subtitle ?? "Exported website";
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="${escapeHtml(description)}"><title>${escapeHtml(title)}</title><link rel="stylesheet" href="styles.css"></head><body><main>${portable.sections.map(sectionMarkup).join("")}</main></body></html>`;
-
-  zip.file("index.html", html);
-  zip.file("styles.css", stylesheet(portable));
-  zip.file("website.json", JSON.stringify(portable, null, 2));
-  zip.file("README.txt", "Open index.html in a browser or deploy this folder to any static host. No HTTPMAKER editor or AI code is included.\n");
+  const files = buildWebsiteFiles(portable);
+  for (const [path, contents] of Object.entries(files)) zip.file(path, contents);
 
   return zip.generateAsync({ type: "uint8array", compression: "DEFLATE", compressionOptions: { level: 6 } });
 }

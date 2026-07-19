@@ -3,7 +3,7 @@ import { projectParamsSchema } from "@/features/projects/schemas/project.schema"
 import { findProjectByIdAndOwner } from "@/features/projects/server/project.repository";
 import { getInstallationClient } from "@/lib/github/get-installation-client";
 import { safelyParseWebsiteData } from "@/schemas/website.schema";
-import { buildWebsiteZip } from "@/utils/exportWebsiteZip";
+import { buildWebsiteFiles } from "@/utils/exportWebsiteZip";
 
 type RouteContext = { params: Promise<{ projectId: string }> };
 
@@ -75,31 +75,63 @@ export async function POST(_request: Request, context: RouteContext) {
       return Response.json({ error: "The project contains invalid website data." }, { status: 422 });
     }
 
-    const path = "httpmaker-website.zip";
-    let sha: string | undefined;
-
-    try {
-      const existing = await octokit.request("GET /repos/{owner}/{repo}/contents/{path}", { ...repository, path });
-      if (!Array.isArray(existing.data)) sha = existing.data.sha;
-    } catch (error: unknown) {
-      if (!(error && typeof error === "object" && "status" in error && error.status === 404)) throw error;
+    const repoResult = await octokit.request("GET /repos/{owner}/{repo}", repository);
+    const branch = repoResult.data.default_branch;
+    const reference = await octokit.request("GET /repos/{owner}/{repo}/git/ref/{ref}", {
+      ...repository,
+      ref: `heads/${branch}`,
+    });
+    const parentSha = reference.data.object.sha;
+    const parentCommit = await octokit.request("GET /repos/{owner}/{repo}/git/commits/{commit_sha}", {
+      ...repository,
+      commit_sha: parentSha,
+    });
+    const currentTree = await octokit.request("GET /repos/{owner}/{repo}/git/trees/{tree_sha}", {
+      ...repository,
+      tree_sha: parentCommit.data.tree.sha,
+      recursive: "true",
+    });
+    const files = buildWebsiteFiles(websiteResult.data);
+    const tree: Array<{
+      path: string;
+      mode: "100644";
+      type: "blob";
+      content?: string;
+      sha?: null;
+    }> = Object.entries(files).map(([path, content]) => ({
+      path,
+      mode: "100644" as const,
+      type: "blob" as const,
+      content,
+    }));
+    if (currentTree.data.tree.some((entry) => entry.path === "httpmaker-website.zip")) {
+      tree.push({ path: "httpmaker-website.zip", mode: "100644", type: "blob", sha: null });
     }
 
-    const archive = await buildWebsiteZip(websiteResult.data);
-
-    const result = await octokit.request("PUT /repos/{owner}/{repo}/contents/{path}", {
+    const newTree = await octokit.request("POST /repos/{owner}/{repo}/git/trees", {
       ...repository,
-      path,
-      message: `Export ${project.name} from HTTPMAKER`,
-      content: Buffer.from(archive).toString("base64"),
-      ...(sha ? { sha } : {}),
+      base_tree: parentCommit.data.tree.sha,
+      tree,
+    });
+    const timestamp = new Date().toISOString();
+    const message = `Export ${project.name} from HTTPMAKER at ${timestamp}`;
+    const result = await octokit.request("POST /repos/{owner}/{repo}/git/commits", {
+      ...repository,
+      message,
+      tree: newTree.data.sha,
+      parents: [parentSha],
+    });
+    await octokit.request("PATCH /repos/{owner}/{repo}/git/refs/{ref}", {
+      ...repository,
+      ref: `heads/${branch}`,
+      sha: result.data.sha,
     });
 
     return Response.json({
       commit: {
-        sha: result.data.commit.sha,
-        message: `Export ${project.name} from HTTPMAKER`,
-        url: result.data.commit.html_url,
+        sha: result.data.sha,
+        message,
+        url: result.data.html_url,
       },
     });
   } catch (error: unknown) {

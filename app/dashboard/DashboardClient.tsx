@@ -228,7 +228,7 @@ export default function DashboardClient({ user, initialProjects }: Props) {
 
   const createTestCommit = async (project: DashboardProject) => {
     if (busyProjectId || !project.repositoryUrl) return;
-    if (!window.confirm(`Commit httpmaker-website.zip to ${project.repositoryUrl}?`)) return;
+    if (!window.confirm(`Push the website files to ${project.repositoryUrl}?`)) return;
     setBusyProjectId(project.id);
     setError("");
     setNotice("");
@@ -236,7 +236,7 @@ export default function DashboardClient({ user, initialProjects }: Props) {
       const response = await fetch(`/api/projects/${encodeURIComponent(project.id)}/github/test-commit`, { method: "POST" });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Unable to create test commit.");
-      setToast("Project ZIP committed successfully");
+      setToast("Website files pushed successfully");
       setLatestCommits((current) => ({ ...current, [project.id]: body.commit }));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to create test commit.");
@@ -329,7 +329,7 @@ export default function DashboardClient({ user, initialProjects }: Props) {
                 <details className={actionStyles.optionsMenu}>
                   <summary>Options<span aria-hidden="true">⌄</span></summary>
                   <div>
-                    <button type="button" disabled={!project.repositoryUrl || busyProjectId === project.id} title={project.repositoryUrl ? "Commit the project ZIP" : "Link a repository first"} onClick={() => createTestCommit(project)}>{busyProjectId === project.id ? "Committing..." : "Commit ZIP"}</button>
+                    <button type="button" disabled={!project.repositoryUrl || busyProjectId === project.id} title={project.repositoryUrl ? "Push the website files" : "Link a repository first"} onClick={() => createTestCommit(project)}>{busyProjectId === project.id ? "Pushing..." : "Push website"}</button>
                     <button type="button" onClick={() => openRepositoryDialog(project)}>{project.repositoryUrl ? "Edit repository link" : "Link repository"}</button>
                     <button type="button" className={actionStyles.deleteButton} disabled={busyProjectId === project.id} onClick={() => deleteDashboardProject(project)}>Delete</button>
                   </div>
