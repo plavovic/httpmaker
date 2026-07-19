@@ -66,6 +66,7 @@ export default function DashboardClient({ user, initialProjects }: Props) {
   const [repositories, setRepositories] = useState<InstallationRepository[]>([]);
   const [repositoriesLoading, setRepositoriesLoading] = useState(false);
   const [notice, setNotice] = useState("");
+  const [toast, setToast] = useState("");
   const [latestCommits, setLatestCommits] = useState<Record<string, LatestCommit | null>>({});
   const workspaceOwner = user.name.trim() || "Your";
   const workspaceTitle = workspaceOwner === "Your" ? "Your workspace" : `${workspaceOwner}${workspaceOwner.toLowerCase().endsWith("s") ? "’" : "’s"} workspace`;
@@ -74,6 +75,12 @@ export default function DashboardClient({ user, initialProjects }: Props) {
     setColorMode(readStoredEditorTheme());
     setThemeReady(true);
   }, []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(""), 3000);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -229,7 +236,7 @@ export default function DashboardClient({ user, initialProjects }: Props) {
       const response = await fetch(`/api/projects/${encodeURIComponent(project.id)}/github/test-commit`, { method: "POST" });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Unable to create test commit.");
-      setNotice("Project ZIP committed successfully.");
+      setToast("Project ZIP committed successfully");
       setLatestCommits((current) => ({ ...current, [project.id]: body.commit }));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to create test commit.");
@@ -242,7 +249,7 @@ export default function DashboardClient({ user, initialProjects }: Props) {
     try {
       await navigator.clipboard.writeText(commit.sha);
       setError("");
-      setNotice("Commit SHA copied.");
+      setToast("Commit SHA copied");
     } catch {
       setNotice("");
       setError("Unable to copy the commit SHA.");
@@ -260,6 +267,7 @@ export default function DashboardClient({ user, initialProjects }: Props) {
 
   return (
     <main data-theme={isLightStudioTheme(colorMode) ? "light" : "dark"} data-color-theme={colorMode} className={`ide-shell studio-shell ${styles.shell} ${themeStyles.themed} ${actionStyles.sharp}`} onPointerMove={moveCursorGlow} onPointerLeave={() => { if (cursorGlowRef.current) cursorGlowRef.current.style.opacity = "0"; }}>
+      {toast && <div className={commitStyles.toast} role="status" aria-live="polite"><span aria-hidden="true">✓</span>{toast}</div>}
       <div ref={cursorGlowRef} className={actionStyles.cursorGlow} aria-hidden="true" />
       <header className={styles.toolbar}>
         <div className={styles.brand}>

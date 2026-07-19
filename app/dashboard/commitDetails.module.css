@@ -74,6 +74,44 @@
   font-weight: 550;
 }
 
+.toast {
+  position: fixed;
+  z-index: 100;
+  top: 22px;
+  left: 50%;
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid color-mix(in srgb, var(--studio-accent) 42%, var(--studio-line-strong));
+  border-radius: 7px;
+  padding: 0 15px;
+  background: color-mix(in srgb, var(--studio-panel) 94%, transparent);
+  color: var(--studio-text);
+  font: 650 11px/1 Inter, Geist, "Segoe UI", Arial, sans-serif;
+  box-shadow: 0 14px 42px rgba(0, 0, 0, .22);
+  backdrop-filter: blur(16px);
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: toastIn .2s ease-out;
+}
+
+.toast span {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--studio-accent) 16%, transparent);
+  color: var(--studio-accent);
+  font-size: 11px;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translate(-50%, -8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
 @media (max-width: 960px) {
   .commitBox {
     flex-wrap: wrap;
