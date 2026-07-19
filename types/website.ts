@@ -3,6 +3,8 @@ export type SectionType = "navbar" | "hero" | "about" | "carousel" | "features" 
 export type SectionVariant = "luxury" | "brutalist";
 
 export type Alignment = "left" | "center" | "right";
+export type NavbarAppearance = "transparent" | "glass" | "colored";
+export type NavbarScrollBehavior = "sticky" | "hide-on-scroll";
 
 import type { DesignPresetId, ImageTreatment, SpacingScale, VisualDensity } from "@/types/designPreset";
 export type WebsiteTheme = { backgroundColor:string; backgroundImageUrl?:string; backgroundImageFit?:"cover"|"contain"; surfaceColor:string; primaryColor:string; secondaryColor:string; accentColor:string; textColor:string; mutedTextColor:string; headingFont:string; bodyFont:string; borderRadius:number; spacingScale:SpacingScale; visualDensity:VisualDensity; imageTreatment:ImageTreatment; fontFamily?:string };
@@ -27,6 +29,8 @@ export type WebsiteSection = {
   backgroundColor?: string;
   backgroundImageUrl?: string;
   backgroundImageFit?: "cover" | "contain";
+  navbarAppearance?: NavbarAppearance;
+  navbarScrollBehavior?: NavbarScrollBehavior;
   props: WebsiteSectionProps;
   elementStyles?: ElementStyleMap;
   elementLinks?: ElementLinkMap;

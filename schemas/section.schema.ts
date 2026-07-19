@@ -14,6 +14,8 @@ const persistedSectionShape = {
   backgroundColor: z.string().optional(),
   backgroundImageUrl: z.string().optional(),
   backgroundImageFit: z.enum(["cover", "contain"]).optional(),
+  navbarAppearance: z.enum(["transparent", "glass", "colored"]).optional(),
+  navbarScrollBehavior: z.enum(["sticky", "hide-on-scroll"]).optional(),
   props: websiteSectionPropsSchema,
   elementStyles: elementStyleMapSchema.optional(),
   elementLinks: elementLinkMapSchema.optional(),

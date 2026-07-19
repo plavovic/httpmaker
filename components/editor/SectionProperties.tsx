@@ -1,4 +1,4 @@
-import type { Alignment, EditableElementStyle, WebsiteSection, WebsiteSectionProps } from "@/types/website";
+import type { Alignment, EditableElementStyle, NavbarAppearance, NavbarScrollBehavior, WebsiteSection, WebsiteSectionProps } from "@/types/website";
 
 type ButtonKey = "buttonText" | "secondaryButtonText";
 type Props = {
@@ -12,6 +12,7 @@ type Props = {
   onUpdateBackgroundImage: (patch: { backgroundImageUrl?: string; backgroundImageFit?: "cover" | "contain" }) => void;
   onUpdateButtonStyle: (key: ButtonKey, patch: Partial<EditableElementStyle>) => void;
   onUpdateButtonLink: (key: ButtonKey, value: string) => void;
+  onUpdateNavbar: (patch: { navbarAppearance?: NavbarAppearance; navbarScrollBehavior?: NavbarScrollBehavior }) => void;
 };
 
 const fields: { label: string; key: "title" | "subtitle" | "imageUrl" }[] = [{ label: "Title", key: "title" }, { label: "Subtitle", key: "subtitle" }, { label: "Image URL", key: "imageUrl" }];
@@ -25,6 +26,12 @@ export default function SectionProperties(p: Props) {
   return <div className="section-properties">
     <div className="section-properties-heading"><span>Selected section</span><h2>Section & actions</h2></div>
     <label>Section<select value={section.id} onChange={(event) => p.onSelectSection(event.target.value)}>{p.sections.map((item) => <option key={item.id} value={item.id}>{item.type} · {item.variant}</option>)}</select></label>
+
+    {section.type === "navbar" && <fieldset><legend>Navbar behavior</legend>
+      <label>Appearance<select value={section.navbarAppearance ?? "colored"} onChange={(event) => p.onUpdateNavbar({ navbarAppearance: event.target.value as NavbarAppearance })}><option value="transparent">Transparent</option><option value="glass">Glass effect</option><option value="colored">Colored</option></select></label>
+      <label>While scrolling<select value={section.navbarScrollBehavior ?? "sticky"} onChange={(event) => p.onUpdateNavbar({ navbarScrollBehavior: event.target.value as NavbarScrollBehavior })}><option value="sticky">Always visible on top</option><option value="hide-on-scroll">Scroll away with the page</option></select></label>
+      <small>The colored option uses the section background color below.</small>
+    </fieldset>}
 
     <fieldset><legend>Section background</legend>
       <label>Color<div className="property-inline"><input type="color" value={colorValue(backgroundColor, "#ffffff")} onChange={(event) => p.onUpdateBackgroundColor(event.target.value)} /><input value={backgroundColor} onChange={(event) => p.onUpdateBackgroundColor(event.target.value)} /><button type="button" onClick={() => p.onUpdateBackgroundColor(undefined)}>Reset</button></div></label>
