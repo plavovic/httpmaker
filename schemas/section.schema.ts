@@ -6,6 +6,14 @@ export const websiteSectionPropsSchema = z.object({
   title: z.string(), subtitle: z.string(), buttonText: z.string(), secondaryButtonText: z.string(),
   imageUrl: z.string(), alignment: alignmentSchema, statLabel: z.string(), statValue: z.string(),
   altText: z.string().optional(), items: z.array(z.string()).optional(),
+  formFields: z.array(z.object({
+    id: nonEmptyStringSchema,
+    label: z.string(),
+    type: z.enum(["text", "email", "tel", "textarea"]),
+    placeholder: z.string(),
+    required: z.boolean(),
+  }).strict()).max(20).optional(),
+  mapEmbedUrl: z.string().optional(),
 }).strict();
 
 const persistedSectionShape = {

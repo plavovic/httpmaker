@@ -12,6 +12,7 @@ type FloatingElementToolbarProps = {
   onStyleChange: (patch: Partial<EditableElementStyle>) => void;
   onLinkChange: (value: string) => void;
   onValueChange: (value: string) => void;
+  onDelete: () => void;
 };
 
 type ToolbarPosition = { left: number; top: number; placement: "above" | "below"; tone: "light" | "dark" };
@@ -19,7 +20,7 @@ type ToolbarPosition = { left: number; top: number; placement: "above" | "below"
 const textKeys: EditableElementKey[] = ["title", "subtitle", "statLabel", "statValue"];
 const buttonKeys: EditableElementKey[] = ["buttonText", "secondaryButtonText"];
 
-export default function FloatingElementToolbar({ sectionId, elementKey, style, link, value, onStyleChange, onLinkChange, onValueChange }: FloatingElementToolbarProps) {
+export default function FloatingElementToolbar({ sectionId, elementKey, style, link, value, onStyleChange, onLinkChange, onValueChange, onDelete }: FloatingElementToolbarProps) {
   const [position, setPosition] = useState<ToolbarPosition>();
 
   useLayoutEffect(() => {
@@ -42,11 +43,12 @@ export default function FloatingElementToolbar({ sectionId, elementKey, style, l
   if (!position) return null;
   const isText = textKeys.includes(elementKey) || elementKey.startsWith("content.");
   const isButton = buttonKeys.includes(elementKey);
+  const isFormInput = /^content\.formField\..+\.placeholder$/.test(elementKey);
   const positionStyle: CSSProperties = { left: position.left, top: position.top, transform: position.placement === "above" ? "translateY(-100%)" : undefined };
 
   return <div className={`element-toolbar element-toolbar-${position.tone}`} style={positionStyle} onClick={(event) => event.stopPropagation()}>
     <div className="element-toolbar-row">
-      <span className="element-toolbar-label">{elementKey === "imageUrl" ? "Image" : isButton ? "Button" : "Text"}</span>
+      <span className="element-toolbar-label">{elementKey === "imageUrl" ? "Image" : isButton ? "Button" : isFormInput ? "Input" : "Text"}</span>
       {(isText || isButton) && <>
         <input aria-label="Text color" title="Text color" type="color" value={style.color ?? "#111111"} onChange={(event) => onStyleChange({ color: event.target.value })} />
         <select aria-label="Font family" value={style.fontFamily ?? "inherit"} onChange={(event) => onStyleChange({ fontFamily: event.target.value })}><option value="inherit">Default font</option><option value="Georgia, serif">Serif</option><option value="Arial, sans-serif">Sans</option><option value="monospace">Mono</option></select>
@@ -57,9 +59,11 @@ export default function FloatingElementToolbar({ sectionId, elementKey, style, l
         {(["left", "center", "right"] as const).map((alignment) => <button type="button" title={`Align ${alignment}`} key={alignment} className={style.textAlign === alignment ? "active" : ""} onClick={() => onStyleChange({ textAlign: alignment })}>{alignment[0].toUpperCase()}</button>)}
       </>}
       {elementKey === "imageUrl" && <><select aria-label="Image crop" value={style.objectFit ?? "cover"} onChange={(event) => onStyleChange({ objectFit: event.target.value as "cover" | "contain" })}><option value="cover">Crop to fill</option><option value="contain">Fit image</option></select></>}
-      {isButton && <><select aria-label="Button style" value={style.buttonStyle ?? "filled"} onChange={(event) => onStyleChange({ buttonStyle: event.target.value as "filled" | "outline" })}><option value="filled">Filled</option><option value="outline">Outline</option></select><input aria-label="Button color" title="Button color" type="color" value={style.backgroundColor ?? "#2563eb"} onChange={(event) => onStyleChange({ backgroundColor: event.target.value })}/><input aria-label="Border color" title="Border color" type="color" value={style.borderColor ?? "#2563eb"} onChange={(event) => onStyleChange({ borderColor: event.target.value })}/><input className="toolbar-number" type="number" min="0" max="100" aria-label="Border radius" title="Border radius" value={style.borderRadius ?? 12} onChange={(event) => onStyleChange({ borderRadius: Number(event.target.value) })}/><select aria-label="Hover effect" value={style.hoverEffect ?? "none"} onChange={(event) => onStyleChange({ hoverEffect: event.target.value as EditableElementStyle["hoverEffect"] })}><option value="none">No hover</option><option value="glow">Glow</option><option value="lift">Lift</option><option value="scale">Scale</option><option value="invert">Invert</option></select></>}
+      {isButton && <><select aria-label="Button style" value={style.buttonStyle ?? "filled"} onChange={(event) => onStyleChange({ buttonStyle: event.target.value as "filled" | "outline" | "text" })}><option value="filled">Color box</option><option value="outline">Outline box</option><option value="text">Clickable text</option></select><input aria-label="Button color" title="Button color" type="color" value={style.backgroundColor ?? "#2563eb"} onChange={(event) => onStyleChange({ backgroundColor: event.target.value })}/><input aria-label="Border color" title="Border color" type="color" value={style.borderColor ?? "#2563eb"} onChange={(event) => onStyleChange({ borderColor: event.target.value })}/><input className="toolbar-number" type="number" min="0" max="100" aria-label="Border radius" title="Border radius" value={style.borderRadius ?? 12} onChange={(event) => onStyleChange({ borderRadius: Number(event.target.value) })}/><select aria-label="Hover effect" value={style.hoverEffect ?? "none"} onChange={(event) => onStyleChange({ hoverEffect: event.target.value as EditableElementStyle["hoverEffect"] })}><option value="none">No hover</option><option value="glow">Glow</option><option value="lift">Lift</option><option value="scale">Scale</option><option value="invert">Invert</option></select></>}
+      {isFormInput && <><input aria-label="Input background" title="Input background" type="color" value={style.backgroundColor ?? "#ffffff"} onChange={(event) => onStyleChange({ backgroundColor: event.target.value })}/><input aria-label="Input border" title="Input border" type="color" value={style.borderColor ?? "#cccccc"} onChange={(event) => onStyleChange({ borderColor: event.target.value })}/><input className="toolbar-number" type="number" min="0" max="100" aria-label="Input border radius" title="Input border radius" value={style.borderRadius ?? 12} onChange={(event) => onStyleChange({ borderRadius: Number(event.target.value) })}/></>}
       <select aria-label="Animation" value={style.animation ?? "none"} onChange={(event) => onStyleChange({ animation: event.target.value as EditableElementStyle["animation"] })}><option value="none">No animation</option><option value="fade">Fade in</option><option value="slide-up">Slide up</option><option value="slide-left">Slide left</option><option value="slide-right">Slide right</option><option value="scale">Scale in</option><option value="float">Float</option><option value="pulse">Pulse</option></select>
       <select aria-label="Animation speed" value={style.animationSpeed ?? "normal"} onChange={(event) => onStyleChange({ animationSpeed: event.target.value as EditableElementStyle["animationSpeed"] })}><option value="slow">Slow</option><option value="normal">Normal</option><option value="fast">Fast</option></select>
+      <button type="button" className="element-toolbar-delete" onClick={onDelete}>Delete</button>
     </div>
     <div className="element-toolbar-row element-toolbar-fields">
       <input value={value} aria-label="Element content" placeholder={elementKey === "imageUrl" ? "Image URL" : "Content"} onChange={(event) => onValueChange(event.target.value)} />

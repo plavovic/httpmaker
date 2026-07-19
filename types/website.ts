@@ -20,6 +20,16 @@ export type WebsiteSectionProps = {
   statValue: string;
   altText?: string;
   items?: string[];
+  formFields?: WebsiteFormField[];
+  mapEmbedUrl?: string;
+};
+
+export type WebsiteFormField = {
+  id: string;
+  label: string;
+  type: "text" | "email" | "tel" | "textarea";
+  placeholder: string;
+  required: boolean;
 };
 
 export type WebsiteSection = {
@@ -86,7 +96,7 @@ export type EditableElementStyle = {
   widthPercent?: number;
   offsetX?: number;
   offsetY?: number;
-  buttonStyle?: "filled" | "outline";
+  buttonStyle?: "filled" | "outline" | "text";
   backgroundColor?: string;
   borderColor?: string;
   borderRadius?: number;

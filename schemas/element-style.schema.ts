@@ -15,7 +15,7 @@ export const editableElementStyleSchema = z.object({
   widthPercent: z.number().finite().min(10).max(100).optional(),
   offsetX: z.number().finite().min(-2000).max(2000).optional(),
   offsetY: z.number().finite().min(-2000).max(2000).optional(),
-  buttonStyle: z.enum(["filled", "outline"]).optional(),
+  buttonStyle: z.enum(["filled", "outline", "text"]).optional(),
   backgroundColor: nonEmptyStringSchema.optional(),
   borderColor: nonEmptyStringSchema.optional(),
   borderRadius: z.number().finite().min(0).max(100).optional(),
