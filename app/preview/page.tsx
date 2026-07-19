@@ -11,6 +11,15 @@ export default function PreviewPage() {
   const [website, setWebsite] = useState<WebsiteJSON | null>(null);
 
   useEffect(() => {
+    document.documentElement.classList.add("website-preview-document");
+    document.body.classList.add("website-preview-document");
+    return () => {
+      document.documentElement.classList.remove("website-preview-document");
+      document.body.classList.remove("website-preview-document");
+    };
+  }, []);
+
+  useEffect(() => {
     const stored = readStoredWebsite() ?? initialWebsite;
     fetch("/api/profile")
       .then(async (response) => {

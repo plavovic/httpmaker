@@ -31,6 +31,23 @@ body {
   font-family: Inter, Geist, "Segoe UI", Arial, sans-serif;
 }
 
+html.website-preview-document,
+body.website-preview-document {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+html.website-preview-document::-webkit-scrollbar,
+body.website-preview-document::-webkit-scrollbar { display: none; }
+body.website-preview-document > .site-renderer {
+  display: block;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
 ::selection {
   background: rgba(130, 170, 255, .28);
   color: white;
@@ -968,4 +985,22 @@ body > .site-renderer,
   .site-contact-section { grid-template-columns: minmax(0,1fr); }
   .site-map-view { grid-column: 1; min-height: 280px; }
   .site-map-view iframe { height: 320px; }
+}
+
+/* Standalone visitor previews must paint every section across the viewport. */
+.website-preview-document body,
+body.website-preview-document,
+body.website-preview-document > .site-renderer,
+body.website-preview-document > .site-renderer.site-preview {
+  width: 100vw !important;
+  max-width: 100vw !important;
+}
+body.website-preview-document > .site-preview .site-section,
+body.website-preview-document > .site-preview .site-section > *,
+body.website-preview-document > .site-preview .site-navbar,
+body.website-preview-document > .site-preview .site-section:not([data-section-type="navbar"]) > section,
+body.website-preview-document > .site-preview .site-section:not([data-section-type="navbar"]) > footer {
+  width: 100% !important;
+  max-width: none !important;
+  margin-inline: 0 !important;
 }
