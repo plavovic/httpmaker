@@ -42,6 +42,7 @@ export function EditableText(props: EditableTextProps) {
 
 type EditableImageProps = EditorProps & { src: string; alt: string; className: string };
 export function EditableImage(props: EditableImageProps) {
+  if (!props.src && !props.editable) return null;
   const selected = props.editable && props.selectedElementKey === "imageUrl";
   return <img {...motion(props, "imageUrl")} data-editor-element="imageUrl" onClick={select(props, "imageUrl")} onDoubleClick={(event)=>{if(!props.editable)return;event.preventDefault();event.stopPropagation();props.onSelectElement?.("imageUrl");props.onRequestImagePicker?.()}} src={props.src} alt={props.alt} style={{...(!props.editable?getImageTreatmentStyle(props.theme.imageTreatment):{}),...visualStyle(props, "imageUrl")}} className={`${props.className} editable-site-element ${props.editable ? "cursor-pointer outline outline-2 outline-offset-4" : ""} ${selected ? "outline-blue-500" : props.editable ? "outline-transparent hover:outline-blue-300" : ""}`} />;
 }

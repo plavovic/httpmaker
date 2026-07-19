@@ -1,1 +1,12 @@
-"use client";import{useState,type FormEvent}from"react";import type{WebsiteSectionComponentProps}from"@/types/website";import{EditableText}from"./EditableContent";export default function ContactSection(p:WebsiteSectionComponentProps){const[sent,setSent]=useState(false);const submit=(e:FormEvent)=>{e.preventDefault();setSent(true)};return <section className={`grid gap-8 rounded-[28px] p-8 lg:grid-cols-2 ${p.section.variant==="brutalist"?"bg-zinc-950 text-white":"bg-white text-zinc-900"}`}><div><p className="text-xs uppercase text-blue-500"><EditableText {...p} elementKey="statLabel">{p.section.props.statLabel}</EditableText></p><h2 className="mt-3 text-4xl font-bold"><EditableText {...p} elementKey="title">{p.section.props.title}</EditableText></h2><p className="mt-4 opacity-70"><EditableText {...p} elementKey="subtitle">{p.section.props.subtitle}</EditableText></p><div className="mt-8 space-y-3"><p>Email · hello@northstar.studio</p><p>Phone · +48 555 014 221</p><div className="h-28 rounded-xl bg-zinc-500/10 p-4">Map preview · Warsaw</div></div></div><form onSubmit={submit} className="space-y-3"><input required placeholder="Name" className="w-full rounded-xl border bg-transparent p-3"/><input required type="email" placeholder="Email" className="w-full rounded-xl border bg-transparent p-3"/><textarea required placeholder="Tell us about your project" className="h-32 w-full rounded-xl border bg-transparent p-3"/><button className="rounded-xl bg-blue-600 px-5 py-3 text-white"><EditableText {...p} elementKey="buttonText">{p.section.props.buttonText}</EditableText></button>{sent&&<p className="text-emerald-500">Message received.</p>}</form></section>}
+import type { WebsiteSectionComponentProps } from "@/types/website";
+import { EditableText } from "./EditableContent";
+
+export default function ContactSection(props: WebsiteSectionComponentProps) {
+  const content = props.section.props;
+  return <section style={{ height: `${props.section.heightVh ?? 100}vh` }} className={`rounded-[28px] p-8 ${props.section.variant === "brutalist" ? "bg-zinc-950 text-white" : "bg-white text-zinc-900"}`}>
+    <p className="text-xs uppercase text-blue-500"><EditableText {...props} elementKey="statLabel">{content.statLabel}</EditableText></p>
+    <h2 className="mt-3 text-4xl font-bold"><EditableText {...props} elementKey="title">{content.title}</EditableText></h2>
+    <p className="mt-4 opacity-70"><EditableText {...props} elementKey="subtitle">{content.subtitle}</EditableText></p>
+    {content.buttonText && <button type="button" className="mt-8"><EditableText {...props} elementKey="buttonText">{content.buttonText}</EditableText></button>}
+  </section>;
+}

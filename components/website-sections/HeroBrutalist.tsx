@@ -1,1 +1,22 @@
-import type{WebsiteSectionComponentProps}from"@/types/website";import{EditableImage,EditableText}from"./EditableContent";import{getAlignmentClasses}from"@/utils/alignment";export default function HeroBrutalist(p:WebsiteSectionComponentProps){const a=getAlignmentClasses(p.section.props.alignment);return <section className="grid min-h-[440px] rounded-[30px] bg-black text-white"><div className="grid gap-8 p-8 lg:grid-cols-[1.15fr_.85fr]"><div className={`flex flex-col justify-center ${a.container}`}><p className="mb-4 text-sm uppercase text-yellow-400"><EditableText {...p} elementKey="statLabel">{p.section.props.statLabel}</EditableText></p><h1 className="text-5xl font-black uppercase"><EditableText {...p} elementKey="title">{p.section.props.title}</EditableText></h1><p className="mt-6 text-lg text-zinc-300"><EditableText {...p} elementKey="subtitle">{p.section.props.subtitle}</EditableText></p><div className={`mt-8 flex gap-3 ${a.actions}`}><button className="rounded-full bg-yellow-400 px-6 py-3 text-black"><EditableText {...p} elementKey="buttonText">{p.section.props.buttonText}</EditableText></button><button className="rounded-full border px-6 py-3"><EditableText {...p} elementKey="secondaryButtonText">{p.section.props.secondaryButtonText}</EditableText></button></div></div><EditableImage {...p} src={p.section.props.imageUrl} alt={p.section.props.altText??p.section.props.title} className="h-full min-h-[300px] w-full rounded-2xl object-cover"/></div></section>}
+import type { WebsiteSectionComponentProps } from "@/types/website";
+import { getAlignmentClasses } from "@/utils/alignment";
+import { EditableImage, EditableText } from "./EditableContent";
+
+export default function HeroBrutalist(props: WebsiteSectionComponentProps) {
+  const content = props.section.props;
+  const alignment = getAlignmentClasses(content.alignment);
+  return <section style={{ height: `${props.section.heightVh ?? 100}vh` }} className="grid bg-black text-white">
+    <div className="grid gap-8 p-8 lg:grid-cols-[1.15fr_.85fr]">
+      <div className={`flex flex-col justify-center ${alignment.container}`}>
+        <p className="mb-4 text-sm uppercase text-yellow-400"><EditableText {...props} elementKey="statLabel">{content.statLabel}</EditableText></p>
+        <h1 className="text-5xl font-black uppercase"><EditableText {...props} elementKey="title">{content.title}</EditableText></h1>
+        <p className="mt-6 text-lg text-zinc-300"><EditableText {...props} elementKey="subtitle">{content.subtitle}</EditableText></p>
+        <div className={`mt-8 flex gap-3 ${alignment.actions}`}>
+          {content.buttonText && <button type="button"><EditableText {...props} elementKey="buttonText">{content.buttonText}</EditableText></button>}
+          {content.secondaryButtonText && <button type="button"><EditableText {...props} elementKey="secondaryButtonText">{content.secondaryButtonText}</EditableText></button>}
+        </div>
+      </div>
+      <EditableImage {...props} src={content.imageUrl} alt={content.altText ?? content.title} className="h-full min-h-[300px] w-full rounded-2xl object-cover" />
+    </div>
+  </section>;
+}

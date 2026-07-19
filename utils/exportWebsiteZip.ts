@@ -17,6 +17,7 @@ function imageMarkup(source: string, alt: string, section: WebsiteSection) {
 
 function sectionMarkup(section: WebsiteSection) {
   const properties = section.props;
+  const height = ` style="height:${section.heightVh ?? 100}vh;overflow:auto"`;
   const image = imageMarkup(properties.imageUrl, properties.altText ?? properties.title, section);
   const actions = `<div class="actions"><a href="#">${escapeHtml(properties.buttonText)}</a>${properties.secondaryButtonText ? `<a class="secondary" href="#">${escapeHtml(properties.secondaryButtonText)}</a>` : ""}</div>`;
   if (section.type === "navbar") {
@@ -25,8 +26,8 @@ function sectionMarkup(section: WebsiteSection) {
     const color = appearance === "colored" && section.backgroundColor ? ` style="--navbar-color:${escapeHtml(section.backgroundColor)}"` : "";
     return `<nav class="site-navbar ${section.variant} navbar-${appearance}" data-scroll-behavior="${behavior}"${color}><div class="navbar-brand"><small>${escapeHtml(properties.subtitle)}</small><strong>${escapeHtml(properties.title)}</strong></div><button class="navbar-burger" type="button" aria-label="Toggle navigation menu" aria-expanded="false"><span></span><span></span><span></span></button><div class="navbar-actions"><a href="#">${escapeHtml(properties.buttonText)}</a>${properties.secondaryButtonText ? `<a class="secondary" href="#">${escapeHtml(properties.secondaryButtonText)}</a>` : ""}</div></nav>`;
   }
-  if (section.type === "footer") return `<footer class="section ${section.variant}"><div><small>${escapeHtml(properties.statLabel)}</small><h2>${escapeHtml(properties.title)}</h2><p>${escapeHtml(properties.subtitle)}</p></div>${actions}</footer>`;
-  return `<section class="section ${section.variant} type-${section.type}"><div class="copy"><small>${escapeHtml(properties.statLabel)}</small><h${section.type === "hero" ? "1" : "2"}>${escapeHtml(properties.title)}</h${section.type === "hero" ? "1" : "2"}><p>${escapeHtml(properties.subtitle)}</p>${actions}</div>${image}</section>`;
+  if (section.type === "footer") return `<footer class="section ${section.variant}"${height}><div><small>${escapeHtml(properties.statLabel)}</small><h2>${escapeHtml(properties.title)}</h2><p>${escapeHtml(properties.subtitle)}</p></div>${actions}</footer>`;
+  return `<section class="section ${section.variant} type-${section.type}"${height}><div class="copy"><small>${escapeHtml(properties.statLabel)}</small><h${section.type === "hero" ? "1" : "2"}>${escapeHtml(properties.title)}</h${section.type === "hero" ? "1" : "2"}><p>${escapeHtml(properties.subtitle)}</p>${actions}</div>${image}</section>`;
 }
 
 function stylesheet(website: WebsiteJSON) {

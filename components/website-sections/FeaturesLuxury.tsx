@@ -1,1 +1,17 @@
-import type{WebsiteSectionComponentProps}from"@/types/website";import{EditableText}from"./EditableContent";export default function FeaturesLuxury(p:WebsiteSectionComponentProps){const dark=p.section.variant==="brutalist";return <section className={`rounded-[28px] p-8 ${dark?"bg-zinc-950 text-white":"bg-white text-zinc-900"}`}><p className="text-sm uppercase tracking-[.3em] text-blue-500"><EditableText {...p} elementKey="statLabel">{p.section.props.statLabel}</EditableText></p><div className="mt-3 flex items-end justify-between gap-6"><div><h2 className="text-4xl font-black"><EditableText {...p} elementKey="title">{p.section.props.title}</EditableText></h2><p className="mt-4 text-lg opacity-70"><EditableText {...p} elementKey="subtitle">{p.section.props.subtitle}</EditableText></p></div><button className="rounded-full bg-blue-600 px-5 py-3 text-white"><EditableText {...p} elementKey="buttonText">{p.section.props.buttonText}</EditableText></button></div><div className="mt-8 grid gap-4 md:grid-cols-3">{["Strategy","Design","Growth"].map((label,i)=><div className="rounded-2xl border p-5" key={label}><div className="mb-4 h-20 rounded-xl bg-gradient-to-br from-blue-500 to-violet-500"/><h3 className="font-semibold">{label}</h3><p className="mt-2 text-sm opacity-60">Focused systems for lasting momentum.</p></div>)}</div></section>}
+import type { WebsiteSectionComponentProps } from "@/types/website";
+import { EditableText } from "./EditableContent";
+
+export default function FeaturesLuxury(props: WebsiteSectionComponentProps) {
+  const content = props.section.props;
+  const dark = props.section.variant === "brutalist";
+  return <section style={{ height: `${props.section.heightVh ?? 100}vh` }} className={`rounded-[28px] p-8 ${dark ? "bg-zinc-950 text-white" : "bg-white text-zinc-900"}`}>
+    <p className="text-sm uppercase tracking-[.3em] text-blue-500"><EditableText {...props} elementKey="statLabel">{content.statLabel}</EditableText></p>
+    <div className="mt-3 flex flex-wrap items-end justify-between gap-6">
+      <div>
+        <h2 className="text-4xl font-black"><EditableText {...props} elementKey="title">{content.title}</EditableText></h2>
+        <p className="mt-4 text-lg opacity-70"><EditableText {...props} elementKey="subtitle">{content.subtitle}</EditableText></p>
+      </div>
+      {content.buttonText && <button type="button"><EditableText {...props} elementKey="buttonText">{content.buttonText}</EditableText></button>}
+    </div>
+  </section>;
+}

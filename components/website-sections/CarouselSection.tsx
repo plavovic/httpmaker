@@ -1,1 +1,12 @@
-"use client";import{useState}from"react";import type{WebsiteSectionComponentProps}from"@/types/website";import{EditableImage,EditableText}from"./EditableContent";const fallback=["https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1200&q=80","https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1200&q=80","https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80"];export default function CarouselSection(p:WebsiteSectionComponentProps){const images=p.section.props.items?.length?p.section.props.items:fallback;const[index,setIndex]=useState(0);const image=index===0&&p.section.props.imageUrl?p.section.props.imageUrl:images[index];return <section className={`rounded-[28px] p-8 ${p.section.variant==="brutalist"?"bg-black text-white":"bg-white text-zinc-900"}`}><p className="text-xs uppercase text-blue-500"><EditableText {...p} elementKey="statLabel">{p.section.props.statLabel}</EditableText></p><div className="flex items-end justify-between"><h2 className="mt-2 text-4xl font-bold"><EditableText {...p} elementKey="title">{p.section.props.title}</EditableText></h2><div><button type="button" onClick={()=>setIndex((index-1+images.length)%images.length)}>←</button><button type="button" onClick={()=>setIndex((index+1)%images.length)}>→</button></div></div><p className="mt-3 opacity-60"><EditableText {...p} elementKey="subtitle">{p.section.props.subtitle}</EditableText></p><EditableImage {...p} src={image} alt={p.section.props.altText??p.section.props.title} className="mt-6 h-[420px] w-full rounded-2xl object-cover"/></section>}
+import type { WebsiteSectionComponentProps } from "@/types/website";
+import { EditableImage, EditableText } from "./EditableContent";
+
+export default function CarouselSection(props: WebsiteSectionComponentProps) {
+  const content = props.section.props;
+  return <section style={{ height: `${props.section.heightVh ?? 100}vh` }} className={`rounded-[28px] p-8 ${props.section.variant === "brutalist" ? "bg-black text-white" : "bg-white text-zinc-900"}`}>
+    <p className="text-xs uppercase text-blue-500"><EditableText {...props} elementKey="statLabel">{content.statLabel}</EditableText></p>
+    <h2 className="mt-2 text-4xl font-bold"><EditableText {...props} elementKey="title">{content.title}</EditableText></h2>
+    <p className="mt-3 opacity-60"><EditableText {...props} elementKey="subtitle">{content.subtitle}</EditableText></p>
+    <EditableImage {...props} src={content.imageUrl} alt={content.altText ?? content.title} className="mt-6 h-[420px] w-full rounded-2xl object-cover" />
+  </section>;
+}

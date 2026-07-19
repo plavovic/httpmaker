@@ -31,6 +31,7 @@ export type WebsiteSection = {
   backgroundImageFit?: "cover" | "contain";
   navbarAppearance?: NavbarAppearance;
   navbarScrollBehavior?: NavbarScrollBehavior;
+  heightVh?: number;
   props: WebsiteSectionProps;
   elementStyles?: ElementStyleMap;
   elementLinks?: ElementLinkMap;
