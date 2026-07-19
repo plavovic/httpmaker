@@ -26,6 +26,13 @@ type Props = {
   initialProjects: DashboardProject[];
 };
 
+type InstallationRepository = {
+  id: number;
+  full_name: string;
+  html_url: string;
+  private: boolean;
+};
+
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: "medium",
   timeStyle: "short",
@@ -48,6 +55,9 @@ export default function DashboardClient({ user, initialProjects }: Props) {
   const [busyProjectId, setBusyProjectId] = useState<string | null>(null);
   const [repositoryProject, setRepositoryProject] = useState<DashboardProject | null>(null);
   const [repositoryUrl, setRepositoryUrl] = useState("");
+  const [repositories, setRepositories] = useState<InstallationRepository[]>([]);
+  const [repositoriesLoading, setRepositoriesLoading] = useState(false);
+  const [notice, setNotice] = useState("");
   const workspaceOwner = user.name.trim() || "Your";
   const workspaceTitle = workspaceOwner === "Your" ? "Your workspace" : `${workspaceOwner}${workspaceOwner.toLowerCase().endsWith("s") ? "’" : "’s"} workspace`;
 
@@ -136,10 +146,22 @@ export default function DashboardClient({ user, initialProjects }: Props) {
     }
   };
 
-  const openRepositoryDialog = (project: DashboardProject) => {
+  const openRepositoryDialog = async (project: DashboardProject) => {
     setRepositoryProject(project);
     setRepositoryUrl(project.repositoryUrl ?? "");
     setError("");
+    setNotice("");
+    setRepositoriesLoading(true);
+    try {
+      const response = await fetch("/api/github/test-repositories");
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Unable to load repositories.");
+      setRepositories(body.repositories);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to load repositories.");
+    } finally {
+      setRepositoriesLoading(false);
+    }
   };
 
   const saveRepository = async (event: FormEvent) => {
@@ -157,8 +179,28 @@ export default function DashboardClient({ user, initialProjects }: Props) {
       if (!response.ok) throw new Error(body.error ?? "Unable to link repository.");
       setProjects((current) => current.map((project) => project.id === repositoryProject.id ? { ...project, repositoryUrl: body.project.repositoryUrl } : project));
       setRepositoryProject(null);
+      setNotice("Repository linked successfully.");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to link repository.");
+    } finally {
+      setBusyProjectId(null);
+    }
+  };
+
+  const createTestCommit = async (project: DashboardProject) => {
+    if (busyProjectId || !project.repositoryUrl) return;
+    if (!window.confirm(`Commit httpmaker-website.zip to ${project.repositoryUrl}?`)) return;
+    setBusyProjectId(project.id);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch(`/api/projects/${encodeURIComponent(project.id)}/github/test-commit`, { method: "POST" });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Unable to create test commit.");
+      setNotice("Project ZIP committed successfully.");
+      if (body.commitUrl) window.open(body.commitUrl, "_blank", "noopener,noreferrer");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to create test commit.");
     } finally {
       setBusyProjectId(null);
     }
@@ -205,6 +247,7 @@ export default function DashboardClient({ user, initialProjects }: Props) {
           <button type="button" className={`${styles.createButton} ${themeStyles.accentButton}`} onClick={() => setModalOpen(true)}>+ Create new project</button>
         </div>
         {error && <p className={styles.error}>{error}</p>}
+        {notice && <p className={styles.notice}>{notice}</p>}
         <div className={styles.projectList}>
           <div className={`${styles.listHeader} ${actionStyles.row}`}><span>Project</span><span>Created</span><span>Last updated</span><span>Actions</span></div>
           {projects.length === 0 ? (
@@ -218,7 +261,7 @@ export default function DashboardClient({ user, initialProjects }: Props) {
                 <details className={actionStyles.optionsMenu}>
                   <summary>Options<span aria-hidden="true">⌄</span></summary>
                   <div>
-                    <button type="button" disabled={!project.repositoryUrl} title={project.repositoryUrl ? "Open the linked repository to push changes" : "Link a repository first"} onClick={() => { if (project.repositoryUrl) window.open(project.repositoryUrl, "_blank", "noopener,noreferrer"); }}>Push</button>
+                    <button type="button" disabled={!project.repositoryUrl || busyProjectId === project.id} title={project.repositoryUrl ? "Commit the project ZIP" : "Link a repository first"} onClick={() => createTestCommit(project)}>{busyProjectId === project.id ? "Committingâ€¦" : "Commit ZIP"}</button>
                     <button type="button" onClick={() => openRepositoryDialog(project)}>{project.repositoryUrl ? "Edit repository link" : "Link repository"}</button>
                     <button type="button" className={actionStyles.deleteButton} disabled={busyProjectId === project.id} onClick={() => deleteDashboardProject(project)}>Delete</button>
                   </div>
@@ -240,8 +283,11 @@ export default function DashboardClient({ user, initialProjects }: Props) {
       </div>}
       {repositoryProject && <div className={styles.backdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) setRepositoryProject(null); }}>
         <form className={styles.modal} onSubmit={saveRepository}>
-          <div><span>REPOSITORY</span><h2>Link repository</h2><p>Attach an HTTPS repository URL to {repositoryProject.name}.</p></div>
-          <label>Repository URL<input autoFocus type="url" value={repositoryUrl} onChange={(event) => setRepositoryUrl(event.target.value)} placeholder="https://github.com/owner/repository" /></label>
+          <div><span>REPOSITORY</span><h2>Link repository</h2><p>Choose a repository available to the GitHub App for {repositoryProject.name}.</p></div>
+          <label>Repository<select autoFocus value={repositoryUrl} onChange={(event) => setRepositoryUrl(event.target.value)} disabled={repositoriesLoading}>
+            <option value="">{repositoriesLoading ? "Loading repositoriesâ€¦" : "No repository"}</option>
+            {repositories.map((repository) => <option key={repository.id} value={repository.html_url}>{repository.full_name}{repository.private ? " (private)" : ""}</option>)}
+          </select></label>
           {error && <p className={styles.error}>{error}</p>}
           <div className={styles.modalActions}><button type="button" onClick={() => setRepositoryProject(null)}>Cancel</button>{repositoryProject.repositoryUrl && <button type="button" onClick={() => setRepositoryUrl("")}>Remove link</button>}<button className={themeStyles.accentButton} type="submit" disabled={busyProjectId === repositoryProject.id}>{busyProjectId === repositoryProject.id ? "Saving…" : "Save link"}</button></div>
         </form>

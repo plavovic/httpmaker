@@ -1,9 +1,80 @@
 import JSZip from "jszip";
-import type { WebsiteJSON,WebsiteSection } from "@/types/website";
 
-const escapeHtml=(value:string)=>value.replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[char]??char));
-const extension=(mime:string)=>mime==="image/jpeg"?"jpg":mime==="image/png"?"png":mime==="image/gif"?"gif":"webp";
-function imageMarkup(source:string,alt:string,section:WebsiteSection,index:number){if(!source)return"";const style=section.elementStyles?.imageUrl;return`<img src="${escapeHtml(source)}" alt="${escapeHtml(alt)}" class="section-image" style="width:${style?.widthPercent??100}%;object-fit:${style?.objectFit??"cover"}" loading="lazy">`}
-function sectionMarkup(section:WebsiteSection,index:number){const p=section.props;const image=imageMarkup(p.imageUrl,p.altText??p.title,section,index);const actions=`<div class="actions"><a href="#">${escapeHtml(p.buttonText)}</a>${p.secondaryButtonText?`<a class="secondary" href="#">${escapeHtml(p.secondaryButtonText)}</a>`:""}</div>`;if(section.type==="navbar")return`<nav class="section ${section.variant}"><div><small>${escapeHtml(p.subtitle)}</small><strong>${escapeHtml(p.title)}</strong></div>${actions}</nav>`;if(section.type==="footer")return`<footer class="section ${section.variant}"><div><small>${escapeHtml(p.statLabel)}</small><h2>${escapeHtml(p.title)}</h2><p>${escapeHtml(p.subtitle)}</p></div>${actions}</footer>`;return`<section class="section ${section.variant} type-${section.type}"><div class="copy"><small>${escapeHtml(p.statLabel)}</small><h${section.type==="hero"?"1":"2"}>${escapeHtml(p.title)}</h${section.type==="hero"?"1":"2"}><p>${escapeHtml(p.subtitle)}</p>${actions}</div>${image}</section>`}
-function stylesheet(website:WebsiteJSON){const t=website.theme;return`*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:${t.backgroundColor};color:${t.textColor};font-family:${JSON.stringify(t.bodyFont)},sans-serif}main{width:min(1200px,100%);margin:auto;padding:clamp(12px,3vw,36px)}.section{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:clamp(24px,5vw,64px);align-items:center;margin:0;padding:clamp(32px,7vw,90px);border-radius:${t.borderRadius}px;background:${t.surfaceColor};overflow:hidden}.section+ .section{margin-top:18px}.section.brutalist{border:3px solid ${t.textColor};border-radius:0;box-shadow:8px 8px 0 ${t.primaryColor}}nav.section,footer.section{grid-template-columns:1fr auto;padding:24px clamp(24px,5vw,60px)}h1,h2{max-width:18ch;margin:.2em 0;font-family:${JSON.stringify(t.headingFont)},serif;line-height:.98;overflow-wrap:anywhere}h1{font-size:clamp(2.5rem,8vw,7rem)}h2{font-size:clamp(2rem,5vw,4.5rem)}p{max-width:60ch;color:${t.mutedTextColor};font-size:clamp(1rem,2vw,1.25rem);line-height:1.65}.section-image{display:block;max-width:100%;height:auto;max-height:650px;margin-inline:auto;border-radius:${t.borderRadius}px}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}.actions a{display:inline-block;border:1px solid ${t.primaryColor};border-radius:${t.borderRadius}px;padding:12px 18px;background:${t.primaryColor};color:${t.backgroundColor};text-decoration:none}.actions a.secondary{background:transparent;color:${t.textColor}}small{color:${t.accentColor};font-weight:700;letter-spacing:.12em;text-transform:uppercase}@media(max-width:720px){main{padding:0}.section{grid-template-columns:1fr;border-radius:0;padding:36px 20px}.section-image{grid-row:1}nav.section,footer.section{grid-template-columns:1fr}.section+.section{margin-top:0}}`}
-export async function exportWebsiteZip(website:WebsiteJSON){const zip=new JSZip();let imageIndex=0;const sources=new Map<string,string>();for(const section of website.sections){const candidates=[section.props.imageUrl,...(section.props.items??[])];for(const source of candidates){if(!source.startsWith("data:image/")||sources.has(source))continue;const match=source.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);if(!match)continue;const path=`assets/image-${++imageIndex}.${extension(match[1])}`;zip.file(path,match[2],{base64:true});sources.set(source,path)}}const portable={...website,sections:website.sections.map(section=>({...section,props:{...section.props,imageUrl:sources.get(section.props.imageUrl)??section.props.imageUrl,items:section.props.items?.map(item=>sources.get(item)??item)}}))};const html=`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="${escapeHtml(website.sections.find(s=>s.type==="hero")?.props.subtitle??"Exported website")}"><title>${escapeHtml(website.sections.find(s=>s.type==="hero")?.props.title??"Website")}</title><link rel="stylesheet" href="styles.css"></head><body><main>${portable.sections.map(sectionMarkup).join("")}</main></body></html>`;zip.file("index.html",html);zip.file("styles.css",stylesheet(portable));zip.file("website.json",JSON.stringify(portable,null,2));zip.file("README.txt","Open index.html in a browser or deploy this folder to any static host. No HTTPMAKER editor or AI code is included.\n");const blob=await zip.generateAsync({type:"blob",compression:"DEFLATE",compressionOptions:{level:6}});const url=URL.createObjectURL(blob);const anchor=document.createElement("a");anchor.href=url;anchor.download="httpmaker-website.zip";anchor.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+import type { WebsiteJSON, WebsiteSection } from "@/types/website";
+
+const escapeHtml = (value: string) => value.replace(
+  /[&<>"']/g,
+  (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character] ?? character,
+);
+
+const extension = (mime: string) => mime === "image/jpeg" ? "jpg" : mime === "image/png" ? "png" : mime === "image/gif" ? "gif" : "webp";
+
+function imageMarkup(source: string, alt: string, section: WebsiteSection) {
+  if (!source) return "";
+  const style = section.elementStyles?.imageUrl;
+  return `<img src="${escapeHtml(source)}" alt="${escapeHtml(alt)}" class="section-image" style="width:${style?.widthPercent ?? 100}%;object-fit:${style?.objectFit ?? "cover"}" loading="lazy">`;
+}
+
+function sectionMarkup(section: WebsiteSection) {
+  const properties = section.props;
+  const image = imageMarkup(properties.imageUrl, properties.altText ?? properties.title, section);
+  const actions = `<div class="actions"><a href="#">${escapeHtml(properties.buttonText)}</a>${properties.secondaryButtonText ? `<a class="secondary" href="#">${escapeHtml(properties.secondaryButtonText)}</a>` : ""}</div>`;
+  if (section.type === "navbar") return `<nav class="section ${section.variant}"><div><small>${escapeHtml(properties.subtitle)}</small><strong>${escapeHtml(properties.title)}</strong></div>${actions}</nav>`;
+  if (section.type === "footer") return `<footer class="section ${section.variant}"><div><small>${escapeHtml(properties.statLabel)}</small><h2>${escapeHtml(properties.title)}</h2><p>${escapeHtml(properties.subtitle)}</p></div>${actions}</footer>`;
+  return `<section class="section ${section.variant} type-${section.type}"><div class="copy"><small>${escapeHtml(properties.statLabel)}</small><h${section.type === "hero" ? "1" : "2"}>${escapeHtml(properties.title)}</h${section.type === "hero" ? "1" : "2"}><p>${escapeHtml(properties.subtitle)}</p>${actions}</div>${image}</section>`;
+}
+
+function stylesheet(website: WebsiteJSON) {
+  const theme = website.theme;
+  return `*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:${theme.backgroundColor};color:${theme.textColor};font-family:${JSON.stringify(theme.bodyFont)},sans-serif}main{width:min(1200px,100%);margin:auto;padding:clamp(12px,3vw,36px)}.section{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:clamp(24px,5vw,64px);align-items:center;margin:0;padding:clamp(32px,7vw,90px);border-radius:${theme.borderRadius}px;background:${theme.surfaceColor};overflow:hidden}.section+ .section{margin-top:18px}.section.brutalist{border:3px solid ${theme.textColor};border-radius:0;box-shadow:8px 8px 0 ${theme.primaryColor}}nav.section,footer.section{grid-template-columns:1fr auto;padding:24px clamp(24px,5vw,60px)}h1,h2{max-width:18ch;margin:.2em 0;font-family:${JSON.stringify(theme.headingFont)},serif;line-height:.98;overflow-wrap:anywhere}h1{font-size:clamp(2.5rem,8vw,7rem)}h2{font-size:clamp(2rem,5vw,4.5rem)}p{max-width:60ch;color:${theme.mutedTextColor};font-size:clamp(1rem,2vw,1.25rem);line-height:1.65}.section-image{display:block;max-width:100%;height:auto;max-height:650px;margin-inline:auto;border-radius:${theme.borderRadius}px}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}.actions a{display:inline-block;border:1px solid ${theme.primaryColor};border-radius:${theme.borderRadius}px;padding:12px 18px;background:${theme.primaryColor};color:${theme.backgroundColor};text-decoration:none}.actions a.secondary{background:transparent;color:${theme.textColor}}small{color:${theme.accentColor};font-weight:700;letter-spacing:.12em;text-transform:uppercase}@media(max-width:720px){main{padding:0}.section{grid-template-columns:1fr;border-radius:0;padding:36px 20px}.section-image{grid-row:1}nav.section,footer.section{grid-template-columns:1fr}.section+.section{margin-top:0}}`;
+}
+
+export async function buildWebsiteZip(website: WebsiteJSON): Promise<Uint8Array> {
+  const zip = new JSZip();
+  let imageIndex = 0;
+  const sources = new Map<string, string>();
+
+  for (const section of website.sections) {
+    for (const source of [section.props.imageUrl, ...(section.props.items ?? [])]) {
+      if (!source.startsWith("data:image/") || sources.has(source)) continue;
+      const match = source.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+      if (!match) continue;
+      const path = `assets/image-${++imageIndex}.${extension(match[1])}`;
+      zip.file(path, match[2], { base64: true });
+      sources.set(source, path);
+    }
+  }
+
+  const portable: WebsiteJSON = {
+    ...website,
+    sections: website.sections.map((section) => ({
+      ...section,
+      props: {
+        ...section.props,
+        imageUrl: sources.get(section.props.imageUrl) ?? section.props.imageUrl,
+        items: section.props.items?.map((item) => sources.get(item) ?? item),
+      },
+    })),
+  };
+  const title = portable.sections.find((section) => section.type === "hero")?.props.title ?? "Website";
+  const description = portable.sections.find((section) => section.type === "hero")?.props.subtitle ?? "Exported website";
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="${escapeHtml(description)}"><title>${escapeHtml(title)}</title><link rel="stylesheet" href="styles.css"></head><body><main>${portable.sections.map(sectionMarkup).join("")}</main></body></html>`;
+
+  zip.file("index.html", html);
+  zip.file("styles.css", stylesheet(portable));
+  zip.file("website.json", JSON.stringify(portable, null, 2));
+  zip.file("README.txt", "Open index.html in a browser or deploy this folder to any static host. No HTTPMAKER editor or AI code is included.\n");
+
+  return zip.generateAsync({ type: "uint8array", compression: "DEFLATE", compressionOptions: { level: 6 } });
+}
+
+export async function exportWebsiteZip(website: WebsiteJSON) {
+  const bytes = await buildWebsiteZip(website);
+  const blob = new Blob([bytes.buffer as ArrayBuffer], { type: "application/zip" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "httpmaker-website.zip";
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
