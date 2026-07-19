@@ -1,0 +1,33 @@
+.flat,
+.flat * {
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+.flat button,
+.flat [role="button"],
+.flat select,
+.flat [class*="mark"],
+.flat [class*="projectName"] i {
+  background-image: none !important;
+  filter: none !important;
+  transform: none !important;
+}
+
+.flat [class*="createButton"],
+.flat [class*="accentButton"] {
+  border-radius: 0 !important;
+  background-color: #f5b301 !important;
+  color: #2a1a00 !important;
+}
+
+.flat .squareCreate.squareCreate {
+  border-radius: 0 !important;
+}
+
+.flat [class*="projectName"] i {
+  border-radius: 0 !important;
+  background-color: #f5b301 !important;
+  color: #2a1a00 !important;
+}

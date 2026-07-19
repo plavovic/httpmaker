@@ -13,6 +13,7 @@ import themeStyles from "./themes.module.css";
 import actionStyles from "./dashboardActions.module.css";
 import repositoryStyles from "./repositoryControls.module.css";
 import commitStyles from "./commitDetails.module.css";
+import flatStyles from "./flatDashboard.module.css";
 
 type DashboardProject = {
   id: string;
@@ -266,7 +267,7 @@ export default function DashboardClient({ user, initialProjects }: Props) {
   if (!themeReady) return <main className={`${styles.shell} ${styles.loading}`} />;
 
   return (
-    <main data-theme={isLightStudioTheme(colorMode) ? "light" : "dark"} data-color-theme={colorMode} className={`ide-shell studio-shell ${styles.shell} ${themeStyles.themed} ${actionStyles.sharp}`} onPointerMove={moveCursorGlow} onPointerLeave={() => { if (cursorGlowRef.current) cursorGlowRef.current.style.opacity = "0"; }}>
+    <main data-theme={isLightStudioTheme(colorMode) ? "light" : "dark"} data-color-theme={colorMode} className={`ide-shell studio-shell ${styles.shell} ${themeStyles.themed} ${actionStyles.sharp} ${flatStyles.flat}`} onPointerMove={moveCursorGlow} onPointerLeave={() => { if (cursorGlowRef.current) cursorGlowRef.current.style.opacity = "0"; }}>
       {toast && <div className={commitStyles.toast} role="status" aria-live="polite"><span aria-hidden="true">✓</span>{toast}</div>}
       <div ref={cursorGlowRef} className={actionStyles.cursorGlow} aria-hidden="true" />
       <header className={styles.toolbar}>
@@ -275,7 +276,6 @@ export default function DashboardClient({ user, initialProjects }: Props) {
         </div>
         <div className={styles.toolbarActions}>
           <StudioThemePicker value={colorMode} onChange={changeTheme} />
-          <button type="button" className={`${styles.createButton} ${themeStyles.accentButton}`} onClick={() => setModalOpen(true)}>Create new project</button>
           <div className={styles.profileWrap}>
             <button type="button" className={styles.avatarButton} onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen}>
               {profileImage ? <img src={profileImage} alt="" /> : <span>{user.name.slice(0, 1).toUpperCase()}</span>}
@@ -295,7 +295,7 @@ export default function DashboardClient({ user, initialProjects }: Props) {
       <section className={styles.workspace}>
         <div className={`${styles.heading} ${actionStyles.heroHeading}`}>
           <div><h1>{workspaceTitle}</h1><p>Continue or start the journey.</p></div>
-          <button type="button" className={`${styles.createButton} ${themeStyles.accentButton}`} onClick={() => setModalOpen(true)}>+ Create new project</button>
+          <button type="button" className={`${styles.createButton} ${themeStyles.accentButton} ${flatStyles.squareCreate}`} onClick={() => setModalOpen(true)}>CREATE NEW PROJECT</button>
         </div>
         {error && <p className={styles.error}>{error}</p>}
         {notice && <p className={styles.notice}>{notice}</p>}
@@ -346,7 +346,7 @@ export default function DashboardClient({ user, initialProjects }: Props) {
           <div><span>NEW PROJECT</span><h2>Create a website</h2><p>Name your project. You can change this later.</p></div>
           <label>Project name<input autoFocus maxLength={100} value={projectName} onChange={(event) => setProjectName(event.target.value)} placeholder="My new website" required /></label>
           {error && <p className={styles.error}>{error}</p>}
-          <div className={styles.modalActions}><button type="button" onClick={() => setModalOpen(false)}>Cancel</button><button className={themeStyles.accentButton} type="submit" disabled={creating}>{creating ? "Creating…" : "Create project"}</button></div>
+          <div className={styles.modalActions}><button type="button" onClick={() => setModalOpen(false)}>Cancel</button><button className={`${themeStyles.accentButton} ${flatStyles.squareCreate}`} type="submit" disabled={creating}>{creating ? "Creating…" : "Create project"}</button></div>
         </form>
       </div>}
       {repositoryProject && <div className={styles.backdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) setRepositoryProject(null); }}>
