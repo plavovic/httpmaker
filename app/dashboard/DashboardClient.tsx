@@ -11,6 +11,8 @@ import StudioThemePicker from "@/components/editor/StudioThemePicker";
 import styles from "./dashboard.module.css";
 import themeStyles from "./themes.module.css";
 import actionStyles from "./dashboardActions.module.css";
+import repositoryStyles from "./repositoryControls.module.css";
+import commitStyles from "./commitDetails.module.css";
 
 type DashboardProject = {
   id: string;
@@ -31,6 +33,12 @@ type InstallationRepository = {
   full_name: string;
   html_url: string;
   private: boolean;
+};
+
+type LatestCommit = {
+  sha: string;
+  message: string;
+  url: string;
 };
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
@@ -58,6 +66,7 @@ export default function DashboardClient({ user, initialProjects }: Props) {
   const [repositories, setRepositories] = useState<InstallationRepository[]>([]);
   const [repositoriesLoading, setRepositoriesLoading] = useState(false);
   const [notice, setNotice] = useState("");
+  const [latestCommits, setLatestCommits] = useState<Record<string, LatestCommit | null>>({});
   const workspaceOwner = user.name.trim() || "Your";
   const workspaceTitle = workspaceOwner === "Your" ? "Your workspace" : `${workspaceOwner}${workspaceOwner.toLowerCase().endsWith("s") ? "’" : "’s"} workspace`;
 
@@ -65,6 +74,24 @@ export default function DashboardClient({ user, initialProjects }: Props) {
     setColorMode(readStoredEditorTheme());
     setThemeReady(true);
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const linkedProjects = projects.filter((project) => project.repositoryUrl);
+
+    void Promise.all(linkedProjects.map(async (project) => {
+      try {
+        const response = await fetch(`/api/projects/${encodeURIComponent(project.id)}/github/test-commit`, { signal: controller.signal });
+        const body = await response.json();
+        if (!response.ok) throw new Error();
+        setLatestCommits((current) => ({ ...current, [project.id]: body.commit }));
+      } catch {
+        if (!controller.signal.aborted) setLatestCommits((current) => ({ ...current, [project.id]: null }));
+      }
+    }));
+
+    return () => controller.abort();
+  }, [projects]);
 
   const changeTheme = (next: ColorMode) => {
     setColorMode(next);
@@ -177,6 +204,11 @@ export default function DashboardClient({ user, initialProjects }: Props) {
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Unable to link repository.");
+      setLatestCommits((current) => {
+        const next = { ...current };
+        delete next[repositoryProject.id];
+        return next;
+      });
       setProjects((current) => current.map((project) => project.id === repositoryProject.id ? { ...project, repositoryUrl: body.project.repositoryUrl } : project));
       setRepositoryProject(null);
       setNotice("Repository linked successfully.");
@@ -198,11 +230,22 @@ export default function DashboardClient({ user, initialProjects }: Props) {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Unable to create test commit.");
       setNotice("Project ZIP committed successfully.");
-      if (body.commitUrl) window.open(body.commitUrl, "_blank", "noopener,noreferrer");
+      setLatestCommits((current) => ({ ...current, [project.id]: body.commit }));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to create test commit.");
     } finally {
       setBusyProjectId(null);
+    }
+  };
+
+  const copyCommitSha = async (commit: LatestCommit) => {
+    try {
+      await navigator.clipboard.writeText(commit.sha);
+      setError("");
+      setNotice("Commit SHA copied.");
+    } catch {
+      setNotice("");
+      setError("Unable to copy the commit SHA.");
     }
   };
 
@@ -254,14 +297,31 @@ export default function DashboardClient({ user, initialProjects }: Props) {
             <div className={styles.empty}><strong>No projects yet</strong><p>Create your first project to open the editor.</p></div>
           ) : projects.map((project) => (
             <div key={project.id} className={`${styles.projectRow} ${actionStyles.row}`}>
-              <span className={styles.projectName}><i>{project.name.slice(0, 1).toUpperCase()}</i><strong>{project.name}</strong></span>
+              <div className={styles.projectName}>
+                <i>{project.name.slice(0, 1).toUpperCase()}</i>
+                <div className={commitStyles.projectDetails}>
+                  <strong>{project.name}</strong>
+                  {project.repositoryUrl && <div className={commitStyles.commitBox}>
+                    {latestCommits[project.id] === undefined ? <span className={commitStyles.commitMuted}>Loading latest commit...</span> : latestCommits[project.id] === null ? <span className={commitStyles.commitMuted}>Latest commit unavailable</span> : <>
+                      <div className={commitStyles.commitText}>
+                        <code title={latestCommits[project.id]!.sha}>{latestCommits[project.id]!.sha.slice(0, 7)}</code>
+                        <span title={latestCommits[project.id]!.message}>{latestCommits[project.id]!.message}</span>
+                      </div>
+                      <div className={commitStyles.commitActions} onClick={(event) => event.stopPropagation()}>
+                        <button type="button" onClick={() => copyCommitSha(latestCommits[project.id]!)}>Copy SHA</button>
+                        <a href={latestCommits[project.id]!.url} target="_blank" rel="noreferrer">View on GitHub</a>
+                      </div>
+                    </>}
+                  </div>}
+                </div>
+              </div>
               <time dateTime={project.createdAt}>{dateFormatter.format(new Date(project.createdAt))}</time>
               <time dateTime={project.updatedAt}>{dateFormatter.format(new Date(project.updatedAt))}</time>
               <span className={actionStyles.actions} onClick={(event) => event.stopPropagation()}>
                 <details className={actionStyles.optionsMenu}>
                   <summary>Options<span aria-hidden="true">⌄</span></summary>
                   <div>
-                    <button type="button" disabled={!project.repositoryUrl || busyProjectId === project.id} title={project.repositoryUrl ? "Commit the project ZIP" : "Link a repository first"} onClick={() => createTestCommit(project)}>{busyProjectId === project.id ? "Committingâ€¦" : "Commit ZIP"}</button>
+                    <button type="button" disabled={!project.repositoryUrl || busyProjectId === project.id} title={project.repositoryUrl ? "Commit the project ZIP" : "Link a repository first"} onClick={() => createTestCommit(project)}>{busyProjectId === project.id ? "Committing..." : "Commit ZIP"}</button>
                     <button type="button" onClick={() => openRepositoryDialog(project)}>{project.repositoryUrl ? "Edit repository link" : "Link repository"}</button>
                     <button type="button" className={actionStyles.deleteButton} disabled={busyProjectId === project.id} onClick={() => deleteDashboardProject(project)}>Delete</button>
                   </div>
@@ -284,10 +344,16 @@ export default function DashboardClient({ user, initialProjects }: Props) {
       {repositoryProject && <div className={styles.backdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) setRepositoryProject(null); }}>
         <form className={styles.modal} onSubmit={saveRepository}>
           <div><span>REPOSITORY</span><h2>Link repository</h2><p>Choose a repository available to the GitHub App for {repositoryProject.name}.</p></div>
-          <label>Repository<select autoFocus value={repositoryUrl} onChange={(event) => setRepositoryUrl(event.target.value)} disabled={repositoriesLoading}>
-            <option value="">{repositoriesLoading ? "Loading repositoriesâ€¦" : "No repository"}</option>
-            {repositories.map((repository) => <option key={repository.id} value={repository.html_url}>{repository.full_name}{repository.private ? " (private)" : ""}</option>)}
-          </select></label>
+          <label className={repositoryStyles.field}>Repository
+            <span className={repositoryStyles.selectWrap}>
+              <select className={repositoryStyles.select} autoFocus value={repositoryUrl} onChange={(event) => setRepositoryUrl(event.target.value)} disabled={repositoriesLoading}>
+                <option value="">{repositoriesLoading ? "Loading repositories..." : "No repository selected"}</option>
+                {repositories.map((repository) => <option key={repository.id} value={repository.html_url}>{repository.full_name}{repository.private ? " (private)" : ""}</option>)}
+              </select>
+              <span className={repositoryStyles.chevron} aria-hidden="true" />
+            </span>
+            <span className={repositoryStyles.hint}>Only repositories available to your GitHub App installation are shown.</span>
+          </label>
           {error && <p className={styles.error}>{error}</p>}
           <div className={styles.modalActions}><button type="button" onClick={() => setRepositoryProject(null)}>Cancel</button>{repositoryProject.repositoryUrl && <button type="button" onClick={() => setRepositoryUrl("")}>Remove link</button>}<button className={themeStyles.accentButton} type="submit" disabled={busyProjectId === repositoryProject.id}>{busyProjectId === repositoryProject.id ? "Saving…" : "Save link"}</button></div>
         </form>

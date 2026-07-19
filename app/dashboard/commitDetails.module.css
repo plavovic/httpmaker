@@ -1,0 +1,88 @@
+.projectDetails {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 6px;
+}
+
+.commitBox {
+  display: flex;
+  width: 100%;
+  max-width: 520px;
+  align-items: center;
+  gap: 10px;
+}
+
+.commitText {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.commitText code {
+  width: fit-content;
+  padding: 0;
+  color: var(--studio-accent);
+  font: 750 10px/1 "Cascadia Code", Consolas, monospace;
+  letter-spacing: .04em;
+}
+
+.commitText span {
+  overflow: hidden;
+  color: var(--studio-text);
+  font-size: 10px;
+  font-weight: 550;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commitActions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 7px;
+}
+
+.commitActions button,
+.commitActions a {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  border: 1px solid var(--studio-line-strong);
+  border-radius: 4px;
+  padding: 0 7px;
+  background: transparent;
+  color: var(--studio-muted);
+  font: 650 8px/1 Inter, Geist, "Segoe UI", Arial, sans-serif;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.commitActions button:hover,
+.commitActions a:hover {
+  border-color: var(--studio-accent);
+  background: var(--studio-hover);
+  color: var(--studio-accent);
+}
+
+.commitMuted {
+  color: var(--studio-muted);
+  font-size: 11px;
+  font-weight: 550;
+}
+
+@media (max-width: 960px) {
+  .commitBox {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 760px) {
+  .commitBox {
+    max-width: 100%;
+  }
+
+}

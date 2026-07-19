@@ -18,6 +18,41 @@ function parseGitHubRepository(url: string): { owner: string; repo: string } | n
   }
 }
 
+export async function GET(_request: Request, context: RouteContext) {
+  const session = await auth();
+  const ownerId = session?.user?.id;
+  if (!ownerId) return Response.json({ error: "Unauthorized." }, { status: 401 });
+
+  const paramsResult = projectParamsSchema.safeParse(await context.params);
+  if (!paramsResult.success) return Response.json({ error: "Invalid project ID." }, { status: 400 });
+
+  const project = await findProjectByIdAndOwner(paramsResult.data.projectId, ownerId);
+  if (!project) return Response.json({ error: "Project not found." }, { status: 404 });
+  if (!project.repositoryUrl) return Response.json({ error: "Link a GitHub repository first." }, { status: 400 });
+
+  const repository = parseGitHubRepository(project.repositoryUrl);
+  if (!repository) return Response.json({ error: "The linked GitHub repository URL is invalid." }, { status: 400 });
+
+  try {
+    const octokit = await getInstallationClient();
+    const result = await octokit.request("GET /repos/{owner}/{repo}/commits", {
+      ...repository,
+      per_page: 1,
+    });
+    const commit = result.data[0];
+    return Response.json({
+      commit: commit ? {
+        sha: commit.sha,
+        message: commit.commit.message.split("\n")[0],
+        url: commit.html_url,
+      } : null,
+    });
+  } catch (error: unknown) {
+    console.error("Failed to load latest GitHub commit:", error);
+    return Response.json({ error: "Unable to load the latest commit." }, { status: 502 });
+  }
+}
+
 export async function POST(_request: Request, context: RouteContext) {
   const session = await auth();
   const ownerId = session?.user?.id;
@@ -60,7 +95,13 @@ export async function POST(_request: Request, context: RouteContext) {
       ...(sha ? { sha } : {}),
     });
 
-    return Response.json({ commitUrl: result.data.commit.html_url });
+    return Response.json({
+      commit: {
+        sha: result.data.commit.sha,
+        message: `Export ${project.name} from HTTPMAKER`,
+        url: result.data.commit.html_url,
+      },
+    });
   } catch (error: unknown) {
     console.error("Failed to create GitHub test commit:", error);
     return Response.json(
