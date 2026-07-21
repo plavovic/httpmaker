@@ -12,6 +12,6 @@ export const animationSchema = z.enum(["none", "fade", "slide-up", "slide-left",
 export const animationSpeedSchema = z.enum(["slow", "normal", "fast"]);
 
 export const editableElementKeySchema = z.string().refine(
-  (key) => ["title", "subtitle", "buttonText", "secondaryButtonText", "imageUrl", "statLabel", "statValue"].includes(key) || key.startsWith("content."),
+  (key) => ["title", "subtitle", "buttonText", "secondaryButtonText", "imageUrl", "mapEmbedUrl", "statLabel", "statValue"].includes(key) || key.startsWith("content."),
   "Invalid editable element key",
 );

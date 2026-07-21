@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import type { Alignment, EditableElementStyle, NavbarAppearance, NavbarScrollBehavior, WebsiteFormField, WebsiteSection, WebsiteSectionProps } from "@/types/website";
+import { extractGoogleMapsEmbedUrl, isGoogleMapsShortUrl } from "@/utils/googleMaps";
 
 type ButtonKey = "buttonText" | "secondaryButtonText";
 type Props = {
@@ -21,6 +23,13 @@ const colorValue = (value: string | undefined, fallback: string) => /^#[\da-f]{6
 
 export default function SectionProperties(p: Props) {
   const section = p.selectedSection;
+  const [mapDraft,setMapDraft]=useState(section.props.mapEmbedUrl??"");
+  const [mapBusy,setMapBusy]=useState(false);
+  const [mapError,setMapError]=useState("");
+  useEffect(()=>setMapDraft(section.props.mapEmbedUrl??""),[section.id,section.props.mapEmbedUrl]);
+  const parsedMapUrl=extractGoogleMapsEmbedUrl(mapDraft);
+  const shortMapUrl=isGoogleMapsShortUrl(mapDraft);
+  const addMap=async()=>{setMapError("");if(parsedMapUrl){p.onUpdateStructuredProps({mapEmbedUrl:parsedMapUrl});return}if(!shortMapUrl)return;setMapBusy(true);try{const response=await fetch("/api/maps/resolve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:mapDraft})});const body=await response.json();if(!response.ok)throw new Error(body.error??"The link could not be resolved.");setMapDraft(body.embedUrl);p.onUpdateStructuredProps({mapEmbedUrl:body.embedUrl})}catch(reason){setMapError(reason instanceof Error?reason.message:"The link could not be resolved.")}finally{setMapBusy(false)}};
   const backgroundColor = section.backgroundColor ?? p.defaultBackgroundColor;
   const addButton = (key: ButtonKey, fallback: string) => p.onUpdateProp(key, section.props[key].trim() || fallback);
   const updateField = (id: string, patch: Partial<WebsiteFormField>) => p.onUpdateStructuredProps({ formFields: (section.props.formFields ?? []).map((field) => field.id === id ? { ...field, ...patch } : field) });
@@ -62,9 +71,9 @@ export default function SectionProperties(p: Props) {
     </fieldset>}
 
     {section.type === "contact" && <fieldset><legend>Google Maps view</legend>
-      <label>Embed code or URL<textarea rows={5} value={section.props.mapEmbedUrl ?? ""} placeholder={'Paste the Google Maps <iframe …> code or its https://www.google.com/maps/embed URL'} onChange={(event) => p.onUpdateStructuredProps({ mapEmbedUrl: event.target.value })} /></label>
-      <small>Only a secure google.com/maps/embed URL is rendered. Other pasted HTML is ignored.</small>
-      {section.props.mapEmbedUrl && <button type="button" onClick={() => p.onUpdateStructuredProps({ mapEmbedUrl: "" })}>Remove map</button>}
+      <label>Embed code or URL<textarea rows={5} value={mapDraft} placeholder={'Paste the Google Maps <iframe …> code or its https://www.google.com/maps/embed URL'} onChange={(event) => setMapDraft(event.target.value)} /></label>
+      <small>{mapError||(!mapDraft?"Paste an embed URL, iframe code, or a maps.app.goo.gl share link.":parsedMapUrl?"Ready to add.":shortMapUrl?"This short link will be converted into an embeddable map.":"This is not a valid Google Maps link. In Google Maps choose Share → Embed a map.")}</small>
+      <div className="property-inline"><button type="button" disabled={mapBusy||(!parsedMapUrl&&!shortMapUrl)} onClick={()=>void addMap()}>{mapBusy?"Resolving…":section.props.mapEmbedUrl?"Update map":"Add map"}</button>{section.props.mapEmbedUrl&&<button type="button" onClick={()=>{setMapDraft("");setMapError("");p.onUpdateStructuredProps({mapEmbedUrl:""})}}>Remove map</button>}</div>
     </fieldset>}
 
     {(["buttonText", "secondaryButtonText"] as ButtonKey[]).map((key, index) => {

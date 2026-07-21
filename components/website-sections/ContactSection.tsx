@@ -1,13 +1,13 @@
 import type { WebsiteSectionComponentProps } from "@/types/website";
 import { extractGoogleMapsEmbedUrl } from "@/utils/googleMaps";
-import { EditableFormField, EditableText } from "./EditableContent";
+import { EditableFormField, EditableMap, EditableText } from "./EditableContent";
 
 export default function ContactSection(props: WebsiteSectionComponentProps) {
   const content = props.section.props;
   const fields = content.formFields ?? [];
   const mapUrl = extractGoogleMapsEmbedUrl(content.mapEmbedUrl ?? "");
 
-  return <section style={{ height: `${props.section.heightVh ?? 100}vh` }} className={`site-contact-section rounded-[28px] p-8 ${props.section.variant === "brutalist" ? "bg-zinc-950 text-white" : "bg-white text-zinc-900"}`}>
+  return <section style={mapUrl ? { minHeight: `${props.section.heightVh ?? 100}vh`, height: "auto" } : { height: `${props.section.heightVh ?? 100}vh` }} className={`site-contact-section rounded-[28px] p-8 ${props.section.variant === "brutalist" ? "bg-zinc-950 text-white" : "bg-white text-zinc-900"}`}>
     <div className="site-contact-copy">
       <p className="text-xs uppercase text-blue-500"><EditableText {...props} elementKey="statLabel">{content.statLabel}</EditableText></p>
       <h2 className="mt-3 text-4xl font-bold"><EditableText {...props} elementKey="title">{content.title}</EditableText></h2>
@@ -18,6 +18,6 @@ export default function ContactSection(props: WebsiteSectionComponentProps) {
       {content.buttonText && <button type="submit"><EditableText {...props} elementKey="buttonText">{content.buttonText}</EditableText></button>}
     </form>}
     {fields.length === 0 && content.buttonText && <button type="button" className="mt-8"><EditableText {...props} elementKey="buttonText">{content.buttonText}</EditableText></button>}
-    {mapUrl && <div className="site-map-view"><iframe src={mapUrl} title={content.title || "Map"} loading="lazy" referrerPolicy="no-referrer-when-downgrade" /></div>}
+    {mapUrl && <EditableMap {...props} src={mapUrl} title={content.title||"Map"}/>}
   </section>;
 }

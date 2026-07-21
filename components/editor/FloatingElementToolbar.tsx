@@ -32,7 +32,8 @@ export default function FloatingElementToolbar({ sectionId, elementKey, style, l
       const background = getComputedStyle(element.parentElement ?? element).backgroundColor;
       const channels = background.match(/\d+/g)?.slice(0, 3).map(Number) ?? [255, 255, 255];
       const luminance = channels[0] * 0.299 + channels[1] * 0.587 + channels[2] * 0.114;
-      setPosition({ left: Math.max(12, Math.min(rect.left, window.innerWidth - 560)), top: placement === "below" ? rect.bottom + 10 : rect.top - 10, placement, tone: luminance < 140 ? "light" : "dark" });
+      const toolbarWidth=Math.min(680,window.innerWidth-24);
+      setPosition({ left: Math.max(12, Math.min(rect.left, window.innerWidth-toolbarWidth-12)), top: placement === "below" ? rect.bottom + 10 : rect.top - 10, placement, tone: luminance < 140 ? "light" : "dark" });
     };
     updatePosition();
     window.addEventListener("resize", updatePosition);
@@ -42,13 +43,14 @@ export default function FloatingElementToolbar({ sectionId, elementKey, style, l
 
   if (!position) return null;
   const isText = textKeys.includes(elementKey) || elementKey.startsWith("content.");
+  const isMap = elementKey === "mapEmbedUrl";
   const isButton = buttonKeys.includes(elementKey);
   const isFormInput = /^content\.formField\..+\.placeholder$/.test(elementKey);
   const positionStyle: CSSProperties = { left: position.left, top: position.top, transform: position.placement === "above" ? "translateY(-100%)" : undefined };
 
   return <div className={`element-toolbar element-toolbar-${position.tone}`} style={positionStyle} onClick={(event) => event.stopPropagation()}>
     <div className="element-toolbar-row">
-      <span className="element-toolbar-label">{elementKey === "imageUrl" ? "Image" : isButton ? "Button" : isFormInput ? "Input" : "Text"}</span>
+      <span className="element-toolbar-label">{elementKey === "imageUrl" ? "Image" : isMap ? "Map" : isButton ? "Button" : isFormInput ? "Input" : "Text"}</span>
       {(isText || isButton) && <>
         <input aria-label="Text color" title="Text color" type="color" value={style.color ?? "#111111"} onChange={(event) => onStyleChange({ color: event.target.value })} />
         <select aria-label="Font family" value={style.fontFamily ?? "inherit"} onChange={(event) => onStyleChange({ fontFamily: event.target.value })}><option value="inherit">Default font</option><option value="Georgia, serif">Serif</option><option value="Arial, sans-serif">Sans</option><option value="monospace">Mono</option></select>

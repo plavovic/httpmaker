@@ -6,11 +6,12 @@
 }
 
 .commitBox {
-  display: flex;
+  display: grid;
   width: 100%;
-  max-width: 520px;
-  align-items: center;
-  gap: 10px;
+  max-width: 100%;
+  min-width: 0;
+  gap: 7px;
+  overflow: hidden;
 }
 
 .commitText {
@@ -41,7 +42,7 @@
 
 .commitActions {
   display: flex;
-  flex: 0 0 auto;
+  flex-wrap: wrap;
   gap: 7px;
 }
 

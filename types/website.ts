@@ -68,6 +68,7 @@ export type EditableElementKey =
   | "buttonText"
   | "secondaryButtonText"
   | "imageUrl"
+  | "mapEmbedUrl"
   | "statLabel"
   | "statValue"
   | `content.${string}`;
@@ -94,8 +95,12 @@ export type EditableElementStyle = {
   letterSpacing?: string;
   objectFit?: "cover" | "contain";
   widthPercent?: number;
+  heightPx?: number;
   offsetX?: number;
   offsetY?: number;
+  offsetXPercent?: number;
+  offsetYPercent?: number;
+  hiddenInPreview?: boolean;
   buttonStyle?: "filled" | "outline" | "text";
   backgroundColor?: string;
   borderColor?: string;
