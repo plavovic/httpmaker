@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { listProjectsByOwner } from "@/features/projects/server/project.repository";
 
 import DashboardClient from "./DashboardClient";
-import { isGlobalGitHubAppEnabled } from "@/lib/github/feature";
+import { isGitHubAppConfigured } from "@/lib/github/config";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -28,7 +28,7 @@ export default async function DashboardPage() {
         updatedAt: project.updatedAt.toISOString(),
         publishedAt: project.publishedAt?.toISOString() ?? null,
       }))}
-      githubEnabled={isGlobalGitHubAppEnabled()}
+      githubEnabled={isGitHubAppConfigured()}
     />
   );
 }

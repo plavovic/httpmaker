@@ -2,19 +2,18 @@ import "server-only";
 
 import { getGitHubApp } from "@/lib/github/app";
 
-function getInstallationId(): number {
-  const value = process.env.GITHUB_APP_INSTALLATION_ID?.trim();
+function getInstallationId(value: string): number {
   const installationId = Number(value);
 
-  if (!value || !Number.isSafeInteger(installationId) || installationId <= 0) {
+  if (!/^\d+$/.test(value) || !Number.isSafeInteger(installationId) || installationId <= 0) {
     throw new Error(
-      "GITHUB_APP_INSTALLATION_ID must be a positive integer.",
+      "GitHub installation ID is invalid or outside the supported API range.",
     );
   }
 
   return installationId;
 }
 
-export async function getInstallationClient() {
-  return getGitHubApp().getInstallationOctokit(getInstallationId());
+export async function getInstallationClient(installationId: string) {
+  return getGitHubApp().getInstallationOctokit(getInstallationId(installationId));
 }

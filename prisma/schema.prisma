@@ -21,6 +21,8 @@ model User {
   sessions Session[]
   projects Project[]
   assets   Asset[]
+  githubInstallations GitHubInstallation[]
+  githubConnectionNonces GitHubConnectionNonce[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -71,6 +73,10 @@ model Project {
   name    String
   website Json
   repositoryUrl String?
+  githubInstallationId String?
+  githubRepositoryId String?
+  githubRepositoryFullName String?
+  githubDefaultBranch String?
   slug             String? @unique
   publishedWebsite Json?
 
@@ -80,11 +86,13 @@ model Project {
   isPublished Boolean   @default(false)
   publishedAt DateTime?
   assets      Asset[]
+  githubInstallation GitHubInstallation? @relation(fields: [githubInstallationId, ownerId], references: [id, ownerId], onDelete: Restrict)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([ownerId])
+  @@index([githubInstallationId])
 }
 
 model Asset {
@@ -105,4 +113,43 @@ model Asset {
 
   @@index([ownerId])
   @@index([projectId])
+}
+
+model GitHubInstallation {
+  id             String   @id @default(cuid())
+  ownerId        String
+  installationId String   @unique
+  accountId      String
+  accountLogin   String
+  accountType    String
+  status         String   @default("active")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  owner    User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  projects Project[]
+
+  @@index([ownerId])
+  @@index([ownerId, status])
+  @@unique([id, ownerId])
+}
+
+model GitHubConnectionNonce {
+  id        String    @id @default(cuid())
+  ownerId   String
+  nonceHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, expiresAt])
+}
+
+model GitHubWebhookDelivery {
+  id         String   @id @default(cuid())
+  deliveryId String   @unique
+  event      String
+  createdAt  DateTime @default(now())
 }

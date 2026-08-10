@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { deleteAssetRecord, findAssetByIdAndOwner } from "@/features/assets/server/asset.repository";
+import { deleteAssetRecord, findAssetByIdAndOwner, findAssetProjectReferences } from "@/features/assets/server/asset.repository";
 import { AssetStorageConfigurationError, getAssetStorage } from "@/lib/assets/storage";
 
 export async function DELETE(_request: Request, context: { params: Promise<{ assetId: string }> }) {
@@ -8,6 +8,8 @@ export async function DELETE(_request: Request, context: { params: Promise<{ ass
   const { assetId } = await context.params;
   const asset = await findAssetByIdAndOwner(assetId, ownerId);
   if (!asset) return Response.json({ error: "Asset not found." }, { status: 404 });
+  const references = await findAssetProjectReferences(ownerId, asset.publicUrl);
+  if (references.length) return Response.json({ error: "This image is still used by a draft or published website. Replace or remove it before deleting.", referenceCount: references.length, projects: references }, { status: 409 });
   try {
     await getAssetStorage().deleteAsset(asset.storageKey);
     await deleteAssetRecord(asset.id, ownerId);

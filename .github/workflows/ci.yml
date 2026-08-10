@@ -7,13 +7,26 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: httpmaker_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d httpmaker_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/httpmaker_ci
       HTTPMAKER_AI_PROVIDER: mock
       AUTH_SECRET: ci-only-placeholder-secret-at-least-32-characters
       AUTH_GITHUB_ID: ci-placeholder
       AUTH_GITHUB_SECRET: ci-placeholder
-      HTTPMAKER_ENABLE_GLOBAL_GITHUB_APP: "false"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -22,6 +35,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run prisma:generate
+      - run: npx prisma validate
+      - run: npx prisma migrate deploy
       - run: npm run typecheck
       - run: npm test
       - run: npm run build

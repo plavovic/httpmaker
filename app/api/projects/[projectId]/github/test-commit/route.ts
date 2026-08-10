@@ -4,7 +4,7 @@ import { findProjectByIdAndOwner } from "@/features/projects/server/project.repo
 import { getInstallationClient } from "@/lib/github/get-installation-client";
 import { safelyParseWebsiteData } from "@/schemas/website.schema";
 import { buildWebsiteFiles } from "@/utils/exportWebsiteZip";
-import { githubFeatureDisabledResponse, isGlobalGitHubAppEnabled } from "@/lib/github/feature";
+import { findOwnedGitHubInstallation } from "@/features/github/server/github.repository";
 
 type RouteContext = { params: Promise<{ projectId: string }> };
 
@@ -20,7 +20,6 @@ function parseGitHubRepository(url: string): { owner: string; repo: string } | n
 }
 
 export async function GET(_request: Request, context: RouteContext) {
-  if (!isGlobalGitHubAppEnabled()) return githubFeatureDisabledResponse();
   const session = await auth();
   const ownerId = session?.user?.id;
   if (!ownerId) return Response.json({ error: "Unauthorized." }, { status: 401 });
@@ -30,13 +29,17 @@ export async function GET(_request: Request, context: RouteContext) {
 
   const project = await findProjectByIdAndOwner(paramsResult.data.projectId, ownerId);
   if (!project) return Response.json({ error: "Project not found." }, { status: 404 });
-  if (!project.repositoryUrl) return Response.json({ error: "Link a GitHub repository first." }, { status: 400 });
+  if (!project.repositoryUrl || !project.githubInstallationId || !project.githubRepositoryId || !project.githubRepositoryFullName) return Response.json({ error: "Link a verified GitHub repository first." }, { status: 400 });
+  const installation = await findOwnedGitHubInstallation(project.githubInstallationId, ownerId);
+  if (!installation || installation.status !== "active") return Response.json({ error: "The linked GitHub installation is unavailable." }, { status: 409 });
 
   const repository = parseGitHubRepository(project.repositoryUrl);
   if (!repository) return Response.json({ error: "The linked GitHub repository URL is invalid." }, { status: 400 });
 
   try {
-    const octokit = await getInstallationClient();
+    const octokit = await getInstallationClient(installation.installationId);
+    const available = await octokit.paginate("GET /installation/repositories", { per_page: 100 });
+    if (!available.some((item) => String(item.id) === project.githubRepositoryId && item.full_name === project.githubRepositoryFullName)) return Response.json({ error: "The linked repository is no longer available to this installation." }, { status: 403 });
     const result = await octokit.request("GET /repos/{owner}/{repo}/commits", {
       ...repository,
       per_page: 1,
@@ -56,7 +59,6 @@ export async function GET(_request: Request, context: RouteContext) {
 }
 
 export async function POST(_request: Request, context: RouteContext) {
-  if (!isGlobalGitHubAppEnabled()) return githubFeatureDisabledResponse();
   const session = await auth();
   const ownerId = session?.user?.id;
   if (!ownerId) return Response.json({ error: "Unauthorized." }, { status: 401 });
@@ -66,13 +68,17 @@ export async function POST(_request: Request, context: RouteContext) {
 
   const project = await findProjectByIdAndOwner(paramsResult.data.projectId, ownerId);
   if (!project) return Response.json({ error: "Project not found." }, { status: 404 });
-  if (!project.repositoryUrl) return Response.json({ error: "Link a GitHub repository first." }, { status: 400 });
+  if (!project.repositoryUrl || !project.githubInstallationId || !project.githubRepositoryId || !project.githubRepositoryFullName) return Response.json({ error: "Link a verified GitHub repository first." }, { status: 400 });
+  const installation = await findOwnedGitHubInstallation(project.githubInstallationId, ownerId);
+  if (!installation || installation.status !== "active") return Response.json({ error: "The linked GitHub installation is unavailable." }, { status: 409 });
 
   const repository = parseGitHubRepository(project.repositoryUrl);
   if (!repository) return Response.json({ error: "The linked GitHub repository URL is invalid." }, { status: 400 });
 
   try {
-    const octokit = await getInstallationClient();
+    const octokit = await getInstallationClient(installation.installationId);
+    const available = await octokit.paginate("GET /installation/repositories", { per_page: 100 });
+    if (!available.some((item) => String(item.id) === project.githubRepositoryId && item.full_name === project.githubRepositoryFullName)) return Response.json({ error: "The linked repository is no longer available to this installation." }, { status: 403 });
     const websiteResult = safelyParseWebsiteData(project.website);
     if (!websiteResult.success) {
       return Response.json({ error: "The project contains invalid website data." }, { status: 422 });

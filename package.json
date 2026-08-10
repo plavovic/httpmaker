@@ -8,7 +8,7 @@
     "prisma:generate": "prisma generate",
     "typecheck": "tsc --noEmit",
     "test": "npm run test:website-schema && npm run test:ai-stage2 && npm run test:ai-stage3 && vitest run",
-    "check": "npm run prisma:generate && npm run typecheck && npm test && npm run build",
+    "check": "npm run prisma:generate && prisma validate && npm run typecheck && npm test && npm run build",
     "test:ai-stage2": "node scripts/run-stage2-tests.cjs",
     "test:ai-stage3": "node scripts/run-stage3-tests.cjs",
     "test:website-schema": "node scripts/run-website-schema-tests.cjs",

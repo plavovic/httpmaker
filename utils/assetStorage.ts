@@ -9,8 +9,12 @@ function mapWebsiteImages(website: WebsiteJSON, mapSource: (source: string) => s
 }
 
 export function compactWebsiteAssetReferences(website: WebsiteJSON, assets: UploadedImageAsset[]): WebsiteJSON {
- const references=new Map(assets.map(asset=>[asset.dataUrl,createAssetReference(asset.id)]));
+ const references=new Map(assets.filter(asset=>!asset.synchronized).map(asset=>[asset.dataUrl,createAssetReference(asset.id)]));
  return mapWebsiteImages(website,source=>references.get(source)??source);
+}
+
+export function replaceWebsiteAssetReferences(website: WebsiteJSON, replacements: ReadonlyMap<string, string>): WebsiteJSON {
+ return mapWebsiteImages(website, source => replacements.get(source) ?? source);
 }
 
 export function resolveWebsiteAssetReferences(website: WebsiteJSON, assets: UploadedImageAsset[]): WebsiteJSON {

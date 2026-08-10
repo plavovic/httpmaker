@@ -20,19 +20,11 @@ export const updateProjectSchema = z
       .optional(),
 
     website: websiteSchema.optional(),
-    repositoryUrl: z.union([
-      z.literal(""),
-      z.string().trim().url("Enter a valid repository URL.").refine(
-        (value) => value.startsWith("https://"),
-        "Repository URL must use HTTPS.",
-      ),
-    ]).nullable().optional(),
   })
   .refine(
     (data) =>
       data.name !== undefined ||
-      data.website !== undefined ||
-      data.repositoryUrl !== undefined,
+      data.website !== undefined,
     {
       message: "At least one field must be provided.",
     },

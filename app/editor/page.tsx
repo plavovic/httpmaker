@@ -17,9 +17,11 @@ import { applyWebsiteDesignPatchSafely } from "@/services/ai/applyWebsiteDesignP
 import type { AiMode, AiPatchProposal } from "@/types/ai";
 import AssetLibrary from "@/components/editor/assets/AssetLibrary";
 import type { UploadedImageAsset } from "@/types/uploadedAsset";
-import { compactWebsiteAssetReferences, createAssetReference, createImageAsset, deleteImageAsset, listImageAssets, resolveWebsiteAssetReferences, saveImageAsset } from "@/utils/assetStorage";
+import { compactWebsiteAssetReferences, createAssetReference, deleteImageAsset, listImageAssets, replaceWebsiteAssetReferences, resolveWebsiteAssetReferences } from "@/utils/assetStorage";
 import { exportWebsiteZip } from "@/utils/exportWebsiteZip";
 import { safelyParseWebsiteData } from "@/schemas/website.schema";
+import { findLegacyAssetReferences } from "@/features/publishing/assets";
+import { createAutosaveCoordinator } from "@/utils/autosaveCoordinator";
 
 type PendingProposal = { proposal: AiPatchProposal; previewWebsite: WebsiteJSON; mode: AiMode; selectedSectionId?: string };
 const modeForPrompt = (message: string): AiMode => /\b(add|insert|create)\b.*\b(section|hero|navbar|about|carousel|features|contact|footer)\b/i.test(message) ? "add-section" : /\b(restyle|theme|palette|colors?|dark|light|design)\b/i.test(message) ? "restyle-website" : /\b(rewrite|copy|content)\b/i.test(message) ? "rewrite-content" : "edit-selected-section";
@@ -50,10 +52,10 @@ export default function EditorPage() {
   const [assetBusy,setAssetBusy]=useState(false);
   const [assetError,setAssetError]=useState("");
   const [retrySave,setRetrySave]=useState(0);
+  const [migrationProgress,setMigrationProgress]=useState("");
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const aiRequestRef = useRef<AbortController | null>(null);
-  const saveRequestRef = useRef<AbortController | null>(null);
-  const saveRevisionRef = useRef(0);
+  const autosaveCoordinatorRef = useRef(createAutosaveCoordinator());
   const dragStateRef = useRef<{ isDragging: boolean; startX: number; startY: number }>({ isDragging: false, startX: 0, startY: 0 });
 
   useEffect(() => {
@@ -137,26 +139,23 @@ export default function EditorPage() {
 
   useEffect(() => {
     if (!storageReady || !activeProjectId) return;
-    const revision = ++saveRevisionRef.current;
     setSaveState("Saving…");
     const timer = window.setTimeout(async () => {
-      saveRequestRef.current?.abort();
-      const controller = new AbortController();
-      saveRequestRef.current = controller;
+      const operation = autosaveCoordinatorRef.current.begin();
       try {
         const response = await fetch(`/api/projects/${encodeURIComponent(activeProjectId)}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ website: compactWebsiteAssetReferences(websiteJSON, assets) }),
-          signal: controller.signal,
+          signal: operation.signal,
         });
         if (!response.ok) throw new Error();
-        if (revision === saveRevisionRef.current) setSaveState("All changes saved");
+        if (autosaveCoordinatorRef.current.isCurrent(operation)) setSaveState("All changes saved");
       } catch {
-        if (!controller.signal.aborted && revision === saveRevisionRef.current) setSaveState("Save failed");
+        if (autosaveCoordinatorRef.current.isCurrent(operation)) setSaveState("Save failed");
       }
     }, 700);
-    return () => { window.clearTimeout(timer); if (saveRequestRef.current && revision < saveRevisionRef.current) saveRequestRef.current.abort(); };
+    return () => window.clearTimeout(timer);
   }, [activeProjectId, assets, retrySave, storageReady, websiteJSON]);
 
   useEffect(() => {
@@ -231,6 +230,8 @@ export default function EditorPage() {
   const chooseAsset=(asset:UploadedImageAsset)=>{if(!assetTarget)return;const reference=assetReference(asset);if(assetTarget==="__background__"){setWebsiteJSON(current=>({...current,isThemeCustomized:true,theme:{...current.theme,backgroundImageUrl:reference}}),{label:"Set page background"});setAssetLibraryOpen(false);return}if(assetTarget.startsWith("__section_background__:")){const sectionId=assetTarget.slice("__section_background__:".length);setWebsiteJSON(current=>({...current,sections:current.sections.map(section=>section.id===sectionId?{...section,backgroundImageUrl:reference,backgroundImageFit:section.backgroundImageFit??"cover"}:section)}),{label:"Set section background image"});setSelection({sectionId});setAssetLibraryOpen(false);return}setWebsiteJSON(current=>({...current,sections:current.sections.map(section=>section.id===assetTarget?{...section,props:{...section.props,imageUrl:reference}}:section)}),{label:"Replace image"});setSelection({sectionId:assetTarget,elementKey:"imageUrl"});setAssetLibraryOpen(false)};
   const removeAsset=async(id:string)=>{if(!ownerId)return;const asset=assets.find(item=>item.id===id);if(asset?.synchronized){const response=await fetch(`/api/assets/${encodeURIComponent(id)}`,{method:"DELETE"});if(!response.ok){const body=await response.json();throw new Error(body.error??"Asset deletion failed.")}}else await deleteImageAsset(id,ownerId);setAssets(current=>current.filter(item=>item.id!==id))};
   const setAssetAsBackground=(asset:UploadedImageAsset)=>{setWebsiteJSON(current=>({...current,isThemeCustomized:true,theme:{...current.theme,backgroundImageUrl:assetReference(asset)}}),{label:"Set page background"});setAssetLibraryOpen(false)};
+  const legacyReferences=useMemo(()=>findLegacyAssetReferences(websiteJSON),[websiteJSON]);
+  const migrateLegacyAssets=async()=>{if(!activeProjectId||!ownerId||!legacyReferences.length)return;setAssetBusy(true);setAssetError("");let working=websiteJSON;try{for(let index=0;index<legacyReferences.length;index+=1){const reference=legacyReferences[index];setMigrationProgress(`Uploading local asset ${index+1} of ${legacyReferences.length}…`);const local=assets.find(asset=>!asset.synchronized&&createAssetReference(asset.id)===reference);if(!local)throw new Error(`Local image ${reference} is unavailable in this browser.`);const blob=await fetch(local.dataUrl).then(response=>response.blob());const file=new File([blob],local.name,{type:local.mimeType});const form=new FormData();form.set("file",file);form.set("projectId",activeProjectId);const uploadResponse=await fetch("/api/assets",{method:"POST",body:form});const uploadBody=await uploadResponse.json();if(!uploadResponse.ok)throw new Error(uploadBody.error??`Could not upload ${local.name}.`);working=replaceWebsiteAssetReferences(working,new Map([[reference,uploadBody.asset.publicUrl]]));const saveResponse=await fetch(`/api/projects/${encodeURIComponent(activeProjectId)}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({website:working})});if(!saveResponse.ok)throw new Error((await saveResponse.json()).error??"Uploaded image, but could not save the migrated draft. Retry is safe.");setAssets(current=>current.some(asset=>asset.id===uploadBody.asset.id)?current:[{id:uploadBody.asset.id,ownerId,name:uploadBody.asset.name,mimeType:uploadBody.asset.mimeType,size:uploadBody.asset.size,width:uploadBody.asset.width??0,height:uploadBody.asset.height??0,dataUrl:uploadBody.asset.publicUrl,createdAt:new Date(uploadBody.asset.createdAt).getTime(),synchronized:true,projectId:uploadBody.asset.projectId},...current]);replaceWebsite(working)}setMigrationProgress("Local assets uploaded. Original browser copies were kept.");setSaveState("All changes saved")}catch(reason){setAssetError(reason instanceof Error?reason.message:"Local asset migration failed. Retry is safe.");setMigrationProgress("")}finally{setAssetBusy(false)}};
 
   const updateElement = (sectionId: string, elementKey: EditableElementKey, value: string) => setWebsiteJSON((current) => {
     const formMatch=elementKey.match(/^content\.formField\.(.+)\.(label|placeholder)$/);
@@ -322,6 +323,8 @@ export default function EditorPage() {
           <div ref={viewportRef} className="editor-viewport studio-viewport flex-1 min-h-0 overflow-auto cursor-grab" onDragOver={event=>{if(event.dataTransfer.types.includes("Files"))event.preventDefault()}} onDrop={event=>{if(!event.dataTransfer.files.length)return;event.preventDefault();void uploadFiles(Array.from(event.dataTransfer.files))}}>
             <button type="button" className="asset-library-trigger" onClick={()=>setAssetLibraryOpen(true)}>Assets <span>{assets.length}</span></button>
             {saveState==="Save failed"&&<button type="button" className="asset-library-trigger" style={{top:"4rem"}} onClick={()=>setRetrySave(value=>value+1)}>Retry save</button>}
+            {legacyReferences.length>0&&activeProjectId&&<button type="button" className="asset-library-trigger" style={{top:saveState==="Save failed"?"7rem":"4rem"}} disabled={assetBusy} onClick={()=>void migrateLegacyAssets()}>Upload local assets ({legacyReferences.length})</button>}
+            {migrationProgress&&<span role="status" aria-live="polite" style={{position:"absolute",top:"1rem",right:"1rem",zIndex:20}}>{migrationProgress}</span>}
             <PreviewDashboard visible={viewMode === "dashboard"} website={displayedWebsite} aiActions={history.length} onWebsiteChange={(website) => { if (!websiteLocked) setWebsiteJSON(website, { label: "Apply website JSON" }); }} />
             {!websiteLocked&&editorTab==="design"&&<aside className="editor-control-drawer"><DesignPresetPanel website={websiteJSON} onChange={(website,label) => setWebsiteJSON(website,{label})}/></aside>}
             {!websiteLocked&&editorTab==="theme"&&<aside className="editor-control-drawer"><ThemePanel website={websiteJSON} onChange={(website,options) => setWebsiteJSON(website,options)} onChooseBackground={()=>{setAssetTarget("__background__");setAssetLibraryOpen(true)}}/></aside>}

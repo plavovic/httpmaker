@@ -12,3 +12,14 @@ export const createAssetRecord = (data: { ownerId: string; projectId?: string; s
 export const findAssetByIdAndOwner = (id: string, ownerId: string) => prisma.asset.findFirst({ where: { id, ownerId } });
 export const deleteAssetRecord = (id: string, ownerId: string) => prisma.asset.deleteMany({ where: { id, ownerId } });
 export const listProjectAssetStorageKeys = (projectId: string, ownerId: string) => prisma.asset.findMany({ where: { projectId, ownerId }, select: { storageKey: true } });
+
+const containsExactString = (value: unknown, target: string): boolean => {
+  if (value === target) return true;
+  if (Array.isArray(value)) return value.some((item) => containsExactString(item, target));
+  return Boolean(value && typeof value === "object" && Object.values(value).some((item) => containsExactString(item, target)));
+};
+
+export async function findAssetProjectReferences(ownerId: string, publicUrl: string) {
+  const projects = await prisma.project.findMany({ where: { ownerId }, select: { id: true, name: true, website: true, publishedWebsite: true } });
+  return projects.filter((project) => containsExactString(project.website, publicUrl) || containsExactString(project.publishedWebsite, publicUrl)).map(({ id, name }) => ({ id, name })).slice(0, 20);
+}

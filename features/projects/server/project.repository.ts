@@ -41,6 +41,9 @@ export async function listProjectsByOwner(
       slug: true,
       isPublished: true,
       publishedAt: true,
+      githubInstallationId: true,
+      githubRepositoryId: true,
+      githubRepositoryFullName: true,
     },
   });
 }
@@ -95,9 +98,6 @@ export async function updateProject(
       ...(input.website !== undefined && {
         website: toPrismaJson(input.website),
       }),
-      ...(input.repositoryUrl !== undefined && {
-        repositoryUrl: input.repositoryUrl || null,
-      }),
     },
   });
 }
@@ -122,4 +122,8 @@ export async function publishProject(projectId: string, ownerId: string, slug: s
 
 export async function unpublishProject(projectId: string, ownerId: string) {
   return prisma.project.updateMany({ where: { id: projectId, ownerId }, data: { isPublished: false } });
+}
+
+export async function linkProjectRepository(projectId: string, ownerId: string, input: { installationId: string; repositoryId: string; fullName: string; htmlUrl: string; defaultBranch: string }) {
+  return prisma.project.updateMany({ where: { id: projectId, ownerId }, data: { githubInstallationId: input.installationId, githubRepositoryId: input.repositoryId, githubRepositoryFullName: input.fullName, repositoryUrl: input.htmlUrl, githubDefaultBranch: input.defaultBranch } });
 }

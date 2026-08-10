@@ -3,6 +3,7 @@ import { createGoogleMapsEmbedUrl, isGoogleMapsShortUrl } from "@/utils/googleMa
 import { auth } from "@/auth";
 import { externalUrlRateLimiter } from "@/lib/server/rate-limit";
 import { jsonBodyError, readJsonBody } from "@/lib/server/request";
+import { mapResolverInputErrorStatus } from "@/utils/mapResolverErrors";
 
 export async function POST(request:Request){
   const session=await auth();const ownerId=session?.user?.id;
@@ -16,5 +17,5 @@ export async function POST(request:Request){
     const response=await fetch(input,{redirect:"follow",headers:{"User-Agent":"Mozilla/5.0 HTTPMAKER map resolver"},signal:AbortSignal.timeout(8000)});
     const embedUrl=createGoogleMapsEmbedUrl(response.url);if(!embedUrl)return NextResponse.json({error:"This short link did not resolve to a place or coordinates."},{status:422});
     return NextResponse.json({embedUrl});
-  }catch(error){if(error instanceof SyntaxError||error instanceof Error&&error.name==="RequestBodyTooLargeError")return jsonBodyError(error);return NextResponse.json({error:"The Google Maps short link could not be resolved."},{status:502})}
+  }catch(error){if(mapResolverInputErrorStatus(error))return jsonBodyError(error);return NextResponse.json({error:"The Google Maps short link could not be resolved."},{status:502})}
 }

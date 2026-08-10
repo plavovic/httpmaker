@@ -3,6 +3,8 @@ import { createAssetRecord, listAssetsByOwner } from "@/features/assets/server/a
 import { findProjectByIdAndOwner } from "@/features/projects/server/project.repository";
 import { AssetStorageConfigurationError, getAssetStorage } from "@/lib/assets/storage";
 import { isSupportedImageBytes, MAX_ASSET_BYTES, SUPPORTED_IMAGE_TYPES } from "@/lib/assets/validation";
+import { uploadAssetWithRollback } from "@/features/assets/asset.service";
+import { readFormDataBody, RequestBodyTooLargeError } from "@/lib/server/request";
 
 const safeName = (name: string) => name.replace(/[\r\n]/g, " ").slice(0, 255) || "image";
 
@@ -20,7 +22,7 @@ export async function POST(request: Request) {
   const declared = Number(request.headers.get("content-length"));
   if (Number.isFinite(declared) && declared > MAX_ASSET_BYTES + 100_000) return Response.json({ error: "Image exceeds the 10 MB limit." }, { status: 413 });
   let form: FormData;
-  try { form = await request.formData(); } catch { return Response.json({ error: "Upload must be multipart form data." }, { status: 400 }); }
+  try { form = await readFormDataBody(request, MAX_ASSET_BYTES + 100_000); } catch (error) { return Response.json({ error: error instanceof RequestBodyTooLargeError ? "Image exceeds the 10 MB limit." : "Upload must be multipart form data." }, { status: error instanceof RequestBodyTooLargeError ? 413 : 400 }); }
   const file = form.get("file");
   const projectId = typeof form.get("projectId") === "string" ? String(form.get("projectId")).trim() : "";
   if (!(file instanceof File)) return Response.json({ error: "An image file is required." }, { status: 400 });
@@ -29,14 +31,11 @@ export async function POST(request: Request) {
   const bytes = new Uint8Array(await file.slice(0, 16).arrayBuffer());
   if (!isSupportedImageBytes(bytes, file.type)) return Response.json({ error: "File contents do not match the declared image type." }, { status: 415 });
   if (projectId && !(await findProjectByIdAndOwner(projectId, ownerId))) return Response.json({ error: "Project not found." }, { status: 404 });
-  let uploaded: { storageKey: string; publicUrl: string } | undefined;
   try {
     const storage = getAssetStorage();
-    uploaded = await storage.putAsset({ storageKey: `assets/${crypto.randomUUID()}`, data: file, contentType: file.type });
-    const asset = await createAssetRecord({ ownerId, ...(projectId ? { projectId } : {}), ...uploaded, name: safeName(file.name), mimeType: file.type, size: file.size });
+    const asset = await uploadAssetWithRollback({ ownerId, ...(projectId ? { projectId } : {}), file, name: safeName(file.name), mimeType: file.type, size: file.size }, { storage, createRecord: createAssetRecord });
     return Response.json({ asset }, { status: 201 });
   } catch (error) {
-    if (uploaded) try { await getAssetStorage().deleteAsset(uploaded.storageKey); } catch { /* best-effort rollback */ }
     if (error instanceof AssetStorageConfigurationError) return Response.json({ error: error.message }, { status: 503 });
     console.error("Asset upload failed:", error);
     return Response.json({ error: "Image upload failed." }, { status: 502 });

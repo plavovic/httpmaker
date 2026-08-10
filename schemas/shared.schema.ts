@@ -4,8 +4,23 @@ export const MAX_TEXT_LENGTH = 5_000;
 export const nonEmptyStringSchema = z.string().min(1).max(MAX_TEXT_LENGTH);
 export const boundedStringSchema = z.string().max(MAX_TEXT_LENGTH);
 
-const CSS_COLOR = /^(?:#[0-9a-f]{3,8}|(?:rgb|hsl)a?\([^\r\n]{1,100}\)|var\(--[a-z0-9_-]{1,80}\)|transparent|currentColor|black|white)$/i;
-export const cssColorSchema = z.string().trim().min(1).max(120).regex(CSS_COLOR, "Enter a supported CSS color value.");
+const COLOR_KEYWORDS = new Set(["transparent", "currentcolor", "black", "white"]);
+const channel = (value: string) => value.endsWith("%") ? Number(value.slice(0, -1)) >= 0 && Number(value.slice(0, -1)) <= 100 : Number.isInteger(Number(value)) && Number(value) >= 0 && Number(value) <= 255;
+const alpha = (value: string) => value.endsWith("%") ? Number(value.slice(0, -1)) >= 0 && Number(value.slice(0, -1)) <= 100 : Number(value) >= 0 && Number(value) <= 1;
+
+export function isSupportedCssColor(input: string) {
+  const value = input.trim();
+  if (/^#[0-9a-f]{3}(?:[0-9a-f]{1}|[0-9a-f]{3}|[0-9a-f]{5})?$/i.test(value)) return true;
+  if (COLOR_KEYWORDS.has(value.toLowerCase())) return true;
+  if (/^var\(--(?:httpmaker|theme|color)-[a-z0-9_-]{1,64}\)$/i.test(value)) return true;
+  const rgb = value.match(/^rgba?\(\s*(\d{1,3}(?:\.\d+)?%?)\s*,\s*(\d{1,3}(?:\.\d+)?%?)\s*,\s*(\d{1,3}(?:\.\d+)?%?)(?:\s*,\s*([0-9.]+%?))?\s*\)$/i);
+  if (rgb) return channel(rgb[1]) && channel(rgb[2]) && channel(rgb[3]) && (rgb[4] === undefined || alpha(rgb[4])) && (value.toLowerCase().startsWith("rgba") ? rgb[4] !== undefined : rgb[4] === undefined);
+  const hsl = value.match(/^hsla?\(\s*(-?\d+(?:\.\d+)?)(?:deg)?\s*,\s*(\d+(?:\.\d+)?)%\s*,\s*(\d+(?:\.\d+)?)%(?:\s*,\s*([0-9.]+%?))?\s*\)$/i);
+  if (hsl) return Number.isFinite(Number(hsl[1])) && Number(hsl[2]) <= 100 && Number(hsl[3]) <= 100 && (hsl[4] === undefined || alpha(hsl[4])) && (value.toLowerCase().startsWith("hsla") ? hsl[4] !== undefined : hsl[4] === undefined);
+  return false;
+}
+
+export const cssColorSchema = z.string().trim().min(1).max(120).refine(isSupportedCssColor, "Enter a supported CSS color value.");
 
 export const safeImageUrlSchema = z.string().max(2_000).refine((value) => {
   if (value === "" || value.startsWith("asset://")) return true;

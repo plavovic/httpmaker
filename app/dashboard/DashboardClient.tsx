@@ -25,6 +25,9 @@ type DashboardProject = {
   slug: string | null;
   isPublished: boolean;
   publishedAt: string | null;
+  githubInstallationId: string | null;
+  githubRepositoryId: string | null;
+  githubRepositoryFullName: string | null;
 };
 
 type Props = {
@@ -34,11 +37,14 @@ type Props = {
 };
 
 type InstallationRepository = {
-  id: number;
-  full_name: string;
-  html_url: string;
+  id: string;
+  fullName: string;
+  htmlUrl: string;
   private: boolean;
+  defaultBranch: string;
 };
+
+type GitHubInstallation = { id:string;accountLogin:string;accountType:string;status:string };
 
 type LatestCommit = {
   sha: string;
@@ -69,6 +75,8 @@ export default function DashboardClient({ user, initialProjects, githubEnabled }
   const [repositoryProject, setRepositoryProject] = useState<DashboardProject | null>(null);
   const [repositoryUrl, setRepositoryUrl] = useState("");
   const [repositories, setRepositories] = useState<InstallationRepository[]>([]);
+  const [installations,setInstallations]=useState<GitHubInstallation[]>([]);
+  const [selectedInstallationId,setSelectedInstallationId]=useState("");
   const [repositoriesLoading, setRepositoriesLoading] = useState(false);
   const [notice, setNotice] = useState("");
   const [toast, setToast] = useState("");
@@ -105,6 +113,14 @@ export default function DashboardClient({ user, initialProjects, githubEnabled }
 
     return () => controller.abort();
   }, [githubEnabled, projects]);
+
+  useEffect(()=>{if(!githubEnabled)return;fetch("/api/github/installations").then(async response=>response.ok?(await response.json()).installations:[]).then(setInstallations).catch(()=>setError("Unable to load GitHub installations."))},[githubEnabled]);
+  useEffect(()=>{const status=new URLSearchParams(window.location.search).get("github");if(status==="connected")setNotice("GitHub App installation connected.");else if(status)setError(`GitHub connection failed: ${status.replaceAll("-"," ")}.`)},[]);
+
+  const connectGitHub=async()=>{const response=await fetch("/api/github/installations/connect",{method:"POST"});const body=await response.json();if(!response.ok){setError(body.error??"Unable to start GitHub connection.");return}window.location.assign(body.installationUrl)};
+  const disconnectGitHub=async(id:string)=>{if(!window.confirm("Disconnect this GitHub installation and unlink its projects?"))return;const response=await fetch(`/api/github/installations/${encodeURIComponent(id)}`,{method:"DELETE"});if(!response.ok){setError((await response.json()).error??"Unable to disconnect GitHub installation.");return}setInstallations(current=>current.filter(item=>item.id!==id));setProjects(current=>current.map(project=>project.githubInstallationId===id?{...project,githubInstallationId:null,githubRepositoryId:null,githubRepositoryFullName:null,repositoryUrl:null}:project));setNotice("GitHub installation disconnected.")};
+  const changeRepositoryInstallation=async(id:string)=>{setSelectedInstallationId(id);setRepositoryUrl("");setRepositoriesLoading(true);try{const response=await fetch(`/api/github/installations/${encodeURIComponent(id)}/repositories`);const body=await response.json();if(!response.ok)throw new Error(body.error??"Unable to load repositories.");setRepositories(body.repositories)}catch(reason){setError(reason instanceof Error?reason.message:"Unable to load repositories.")}finally{setRepositoriesLoading(false)}};
+  const unlinkRepository=async()=>{if(!repositoryProject)return;const response=await fetch(`/api/projects/${encodeURIComponent(repositoryProject.id)}/github`,{method:"DELETE"});if(!response.ok){setError((await response.json()).error??"Unable to unlink repository.");return}setProjects(current=>current.map(project=>project.id===repositoryProject.id?{...project,repositoryUrl:null,githubInstallationId:null,githubRepositoryId:null,githubRepositoryFullName:null}:project));setRepositoryProject(null);setNotice("Repository unlinked.")};
 
   const changeTheme = (next: ColorMode) => {
     setColorMode(next);
@@ -223,13 +239,16 @@ export default function DashboardClient({ user, initialProjects, githubEnabled }
   };
 
   const openRepositoryDialog = async (project: DashboardProject) => {
+    const installationId=project.githubInstallationId??installations.find(item=>item.status==="active")?.id;
+    if(!installationId){setError("Connect a GitHub App installation first.");return}
     setRepositoryProject(project);
-    setRepositoryUrl(project.repositoryUrl ?? "");
+    setRepositoryUrl(project.githubRepositoryId ?? "");
+    setSelectedInstallationId(installationId);
     setError("");
     setNotice("");
     setRepositoriesLoading(true);
     try {
-      const response = await fetch("/api/github/test-repositories");
+      const response = await fetch(`/api/github/installations/${encodeURIComponent(installationId)}/repositories`);
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Unable to load repositories.");
       setRepositories(body.repositories);
@@ -246,10 +265,10 @@ export default function DashboardClient({ user, initialProjects, githubEnabled }
     setBusyProjectId(repositoryProject.id);
     setError("");
     try {
-      const response = await fetch(`/api/projects/${encodeURIComponent(repositoryProject.id)}`, {
-        method: "PATCH",
+      const response = await fetch(`/api/projects/${encodeURIComponent(repositoryProject.id)}/github`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repositoryUrl: repositoryUrl.trim() }),
+        body: JSON.stringify({ installationId:selectedInstallationId,repositoryId:repositoryUrl }),
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Unable to link repository.");
@@ -258,7 +277,7 @@ export default function DashboardClient({ user, initialProjects, githubEnabled }
         delete next[repositoryProject.id];
         return next;
       });
-      setProjects((current) => current.map((project) => project.id === repositoryProject.id ? { ...project, repositoryUrl: body.project.repositoryUrl } : project));
+      setProjects((current) => current.map((project) => project.id === repositoryProject.id ? { ...project, repositoryUrl: body.repository.htmlUrl,githubInstallationId:selectedInstallationId,githubRepositoryId:body.repository.id,githubRepositoryFullName:body.repository.fullName } : project));
       setRepositoryProject(null);
       setNotice("Repository linked successfully.");
     } catch (reason) {
@@ -336,8 +355,9 @@ export default function DashboardClient({ user, initialProjects, githubEnabled }
       <section className={styles.workspace}>
         <div className={`${styles.heading} ${actionStyles.heroHeading}`}>
           <div><h1>{workspaceTitle}</h1><p>Continue or start the journey.</p></div>
-          <button type="button" className={`${styles.createButton} ${themeStyles.accentButton} ${flatStyles.squareCreate}`} onClick={() => setModalOpen(true)}>CREATE NEW PROJECT</button>
+          <div><button type="button" className={`${styles.createButton} ${themeStyles.accentButton} ${flatStyles.squareCreate}`} onClick={() => setModalOpen(true)}>CREATE NEW PROJECT</button>{githubEnabled&&<button type="button" className={styles.createButton} onClick={()=>void connectGitHub()}>CONNECT GITHUB APP</button>}</div>
         </div>
+        {githubEnabled&&installations.length>0&&<div aria-label="Connected GitHub installations">{installations.map(installation=><span key={installation.id}>{installation.accountLogin} ({installation.status}) <button type="button" onClick={()=>void disconnectGitHub(installation.id)}>Disconnect</button></span>)}</div>}
         {error && <p className={styles.error}>{error}</p>}
         {notice && <p className={styles.notice}>{notice}</p>}
         <div className={styles.projectList}>
@@ -399,18 +419,19 @@ export default function DashboardClient({ user, initialProjects, githubEnabled }
       {githubEnabled && repositoryProject && <div className={styles.backdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) setRepositoryProject(null); }}>
         <form className={styles.modal} onSubmit={saveRepository}>
           <div><span>REPOSITORY</span><h2>Link repository</h2><p>Choose a repository available to the GitHub App for {repositoryProject.name}.</p></div>
+          <label className={repositoryStyles.field}>Installation<select value={selectedInstallationId} onChange={event=>void changeRepositoryInstallation(event.target.value)}>{installations.filter(item=>item.status==="active").map(item=><option key={item.id} value={item.id}>{item.accountLogin}</option>)}</select></label>
           <label className={repositoryStyles.field}>Repository
             <span className={repositoryStyles.selectWrap}>
               <select className={repositoryStyles.select} autoFocus value={repositoryUrl} onChange={(event) => setRepositoryUrl(event.target.value)} disabled={repositoriesLoading}>
                 <option value="">{repositoriesLoading ? "Loading repositories..." : "No repository selected"}</option>
-                {repositories.map((repository) => <option key={repository.id} value={repository.html_url}>{repository.full_name}{repository.private ? " (private)" : ""}</option>)}
+                {repositories.map((repository) => <option key={repository.id} value={repository.id}>{repository.fullName}{repository.private ? " (private)" : ""}</option>)}
               </select>
               <span className={repositoryStyles.chevron} aria-hidden="true" />
             </span>
             <span className={repositoryStyles.hint}>Only repositories available to your GitHub App installation are shown.</span>
           </label>
           {error && <p className={styles.error}>{error}</p>}
-          <div className={styles.modalActions}><button type="button" onClick={() => setRepositoryProject(null)}>Cancel</button>{repositoryProject.repositoryUrl && <button type="button" onClick={() => setRepositoryUrl("")}>Remove link</button>}<button className={themeStyles.accentButton} type="submit" disabled={busyProjectId === repositoryProject.id}>{busyProjectId === repositoryProject.id ? "Saving…" : "Save link"}</button></div>
+          <div className={styles.modalActions}><button type="button" onClick={() => setRepositoryProject(null)}>Cancel</button>{repositoryProject.repositoryUrl && <button type="button" onClick={()=>void unlinkRepository()}>Remove link</button>}<button className={themeStyles.accentButton} type="submit" disabled={busyProjectId === repositoryProject.id||!repositoryUrl}>{busyProjectId === repositoryProject.id ? "Saving…" : "Save link"}</button></div>
         </form>
       </div>}
     </main>
