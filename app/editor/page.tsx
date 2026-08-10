@@ -49,8 +49,11 @@ export default function EditorPage() {
   const [assetTarget,setAssetTarget]=useState<string>();
   const [assetBusy,setAssetBusy]=useState(false);
   const [assetError,setAssetError]=useState("");
+  const [retrySave,setRetrySave]=useState(0);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const aiRequestRef = useRef<AbortController | null>(null);
+  const saveRequestRef = useRef<AbortController | null>(null);
+  const saveRevisionRef = useRef(0);
   const dragStateRef = useRef<{ isDragging: boolean; startX: number; startY: number }>({ isDragging: false, startX: 0, startY: 0 });
 
   useEffect(() => {
@@ -134,22 +137,27 @@ export default function EditorPage() {
 
   useEffect(() => {
     if (!storageReady || !activeProjectId) return;
+    const revision = ++saveRevisionRef.current;
     setSaveState("Saving…");
     const timer = window.setTimeout(async () => {
+      saveRequestRef.current?.abort();
+      const controller = new AbortController();
+      saveRequestRef.current = controller;
       try {
         const response = await fetch(`/api/projects/${encodeURIComponent(activeProjectId)}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ website: compactWebsiteAssetReferences(websiteJSON, assets) }),
+          signal: controller.signal,
         });
         if (!response.ok) throw new Error();
-        setSaveState("All changes saved");
+        if (revision === saveRevisionRef.current) setSaveState("All changes saved");
       } catch {
-        setSaveState("Save failed");
+        if (!controller.signal.aborted && revision === saveRevisionRef.current) setSaveState("Save failed");
       }
     }, 700);
-    return () => window.clearTimeout(timer);
-  }, [activeProjectId, assets, storageReady, websiteJSON]);
+    return () => { window.clearTimeout(timer); if (saveRequestRef.current && revision < saveRevisionRef.current) saveRequestRef.current.abort(); };
+  }, [activeProjectId, assets, retrySave, storageReady, websiteJSON]);
 
   useEffect(() => {
     if (editorTab === "ai") return;
@@ -216,12 +224,13 @@ export default function EditorPage() {
   }, []);
 
   useEffect(() => () => aiRequestRef.current?.abort(), []);
-  useEffect(()=>{if(!ownerId)return;listImageAssets(ownerId).then(setAssets).catch(()=>setAssetError("The asset library could not be opened."))},[ownerId]);
+  useEffect(()=>{if(!ownerId)return;Promise.all([listImageAssets(ownerId),fetch(`/api/assets${activeProjectId?`?projectId=${encodeURIComponent(activeProjectId)}`:""}`).then(async response=>response.ok?(await response.json()).assets:[])]).then(([local,server])=>setAssets([...server.map((asset:{id:string;projectId?:string|null;publicUrl:string;name:string;mimeType:string;size:number;width:number|null;height:number|null;createdAt:string})=>({id:asset.id,ownerId,name:asset.name,mimeType:asset.mimeType,size:asset.size,width:asset.width??0,height:asset.height??0,dataUrl:asset.publicUrl,createdAt:new Date(asset.createdAt).getTime(),synchronized:true,projectId:asset.projectId})),...local])).catch(()=>setAssetError("The asset library could not be opened."))},[activeProjectId,ownerId]);
 
-  const uploadFiles=async(files:File[])=>{if(!files.length||!ownerId)return;setAssetBusy(true);setAssetError("");try{const uploaded=[] as UploadedImageAsset[];for(const file of files){const asset=await createImageAsset(file,ownerId);await saveImageAsset(asset,ownerId);uploaded.push(asset)}setAssets(current=>[...uploaded,...current]);setAssetLibraryOpen(true)}catch(reason){setAssetError(reason instanceof Error?reason.message:"Image upload failed.")}finally{setAssetBusy(false)}};
-  const chooseAsset=(asset:UploadedImageAsset)=>{if(!assetTarget)return;const reference=createAssetReference(asset.id);if(assetTarget==="__background__"){setWebsiteJSON(current=>({...current,isThemeCustomized:true,theme:{...current.theme,backgroundImageUrl:reference}}),{label:"Set page background"});setAssetLibraryOpen(false);return}if(assetTarget.startsWith("__section_background__:")){const sectionId=assetTarget.slice("__section_background__:".length);setWebsiteJSON(current=>({...current,sections:current.sections.map(section=>section.id===sectionId?{...section,backgroundImageUrl:reference,backgroundImageFit:section.backgroundImageFit??"cover"}:section)}),{label:"Set section background image"});setSelection({sectionId});setAssetLibraryOpen(false);return}setWebsiteJSON(current=>({...current,sections:current.sections.map(section=>section.id===assetTarget?{...section,props:{...section.props,imageUrl:reference}}:section)}),{label:"Replace image"});setSelection({sectionId:assetTarget,elementKey:"imageUrl"});setAssetLibraryOpen(false)};
-  const removeAsset=async(id:string)=>{if(!ownerId)return;await deleteImageAsset(id,ownerId);setAssets(current=>current.filter(asset=>asset.id!==id))};
-  const setAssetAsBackground=(asset:UploadedImageAsset)=>{setWebsiteJSON(current=>({...current,isThemeCustomized:true,theme:{...current.theme,backgroundImageUrl:createAssetReference(asset.id)}}),{label:"Set page background"});setAssetLibraryOpen(false)};
+  const uploadFiles=async(files:File[])=>{if(!files.length||!ownerId)return;setAssetBusy(true);setAssetError("");try{const uploaded=[] as UploadedImageAsset[];for(const file of files){const form=new FormData();form.set("file",file);if(activeProjectId)form.set("projectId",activeProjectId);const response=await fetch("/api/assets",{method:"POST",body:form});const body=await response.json();if(!response.ok)throw new Error(body.error??"Image upload failed.");const asset=body.asset;uploaded.push({id:asset.id,ownerId,name:asset.name,mimeType:asset.mimeType,size:asset.size,width:asset.width??0,height:asset.height??0,dataUrl:asset.publicUrl,createdAt:new Date(asset.createdAt).getTime(),synchronized:true,projectId:asset.projectId})}setAssets(current=>[...uploaded,...current]);setAssetLibraryOpen(true)}catch(reason){setAssetError(reason instanceof Error?reason.message:"Image upload failed.")}finally{setAssetBusy(false)}};
+  const assetReference=(asset:UploadedImageAsset)=>asset.synchronized?asset.dataUrl:createAssetReference(asset.id);
+  const chooseAsset=(asset:UploadedImageAsset)=>{if(!assetTarget)return;const reference=assetReference(asset);if(assetTarget==="__background__"){setWebsiteJSON(current=>({...current,isThemeCustomized:true,theme:{...current.theme,backgroundImageUrl:reference}}),{label:"Set page background"});setAssetLibraryOpen(false);return}if(assetTarget.startsWith("__section_background__:")){const sectionId=assetTarget.slice("__section_background__:".length);setWebsiteJSON(current=>({...current,sections:current.sections.map(section=>section.id===sectionId?{...section,backgroundImageUrl:reference,backgroundImageFit:section.backgroundImageFit??"cover"}:section)}),{label:"Set section background image"});setSelection({sectionId});setAssetLibraryOpen(false);return}setWebsiteJSON(current=>({...current,sections:current.sections.map(section=>section.id===assetTarget?{...section,props:{...section.props,imageUrl:reference}}:section)}),{label:"Replace image"});setSelection({sectionId:assetTarget,elementKey:"imageUrl"});setAssetLibraryOpen(false)};
+  const removeAsset=async(id:string)=>{if(!ownerId)return;const asset=assets.find(item=>item.id===id);if(asset?.synchronized){const response=await fetch(`/api/assets/${encodeURIComponent(id)}`,{method:"DELETE"});if(!response.ok){const body=await response.json();throw new Error(body.error??"Asset deletion failed.")}}else await deleteImageAsset(id,ownerId);setAssets(current=>current.filter(item=>item.id!==id))};
+  const setAssetAsBackground=(asset:UploadedImageAsset)=>{setWebsiteJSON(current=>({...current,isThemeCustomized:true,theme:{...current.theme,backgroundImageUrl:assetReference(asset)}}),{label:"Set page background"});setAssetLibraryOpen(false)};
 
   const updateElement = (sectionId: string, elementKey: EditableElementKey, value: string) => setWebsiteJSON((current) => {
     const formMatch=elementKey.match(/^content\.formField\.(.+)\.(label|placeholder)$/);
@@ -249,7 +258,7 @@ export default function EditorPage() {
 
   const openPreview = () => {
     saveStoredWebsite(compactWebsiteAssetReferences(websiteJSON,assets));
-    window.open("/preview", "_blank", "noopener,noreferrer");
+    window.open(activeProjectId?`/preview/${encodeURIComponent(activeProjectId)}`:"/preview", "_blank", "noopener,noreferrer");
   };
 
   const handleSend = async (event: FormEvent) => {
@@ -312,6 +321,7 @@ export default function EditorPage() {
         <div className="flex h-full flex-col">
           <div ref={viewportRef} className="editor-viewport studio-viewport flex-1 min-h-0 overflow-auto cursor-grab" onDragOver={event=>{if(event.dataTransfer.types.includes("Files"))event.preventDefault()}} onDrop={event=>{if(!event.dataTransfer.files.length)return;event.preventDefault();void uploadFiles(Array.from(event.dataTransfer.files))}}>
             <button type="button" className="asset-library-trigger" onClick={()=>setAssetLibraryOpen(true)}>Assets <span>{assets.length}</span></button>
+            {saveState==="Save failed"&&<button type="button" className="asset-library-trigger" style={{top:"4rem"}} onClick={()=>setRetrySave(value=>value+1)}>Retry save</button>}
             <PreviewDashboard visible={viewMode === "dashboard"} website={displayedWebsite} aiActions={history.length} onWebsiteChange={(website) => { if (!websiteLocked) setWebsiteJSON(website, { label: "Apply website JSON" }); }} />
             {!websiteLocked&&editorTab==="design"&&<aside className="editor-control-drawer"><DesignPresetPanel website={websiteJSON} onChange={(website,label) => setWebsiteJSON(website,{label})}/></aside>}
             {!websiteLocked&&editorTab==="theme"&&<aside className="editor-control-drawer"><ThemePanel website={websiteJSON} onChange={(website,options) => setWebsiteJSON(website,options)} onChooseBackground={()=>{setAssetTarget("__background__");setAssetLibraryOpen(true)}}/></aside>}

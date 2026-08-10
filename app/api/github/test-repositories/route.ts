@@ -1,7 +1,9 @@
 import { auth } from "@/auth";
 import { getInstallationClient } from "@/lib/github/get-installation-client";
+import { githubFeatureDisabledResponse, isGlobalGitHubAppEnabled } from "@/lib/github/feature";
 
 export async function GET() {
+  if (!isGlobalGitHubAppEnabled()) return githubFeatureDisabledResponse();
   const session = await auth();
 
   if (!session?.user?.id) {

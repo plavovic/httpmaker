@@ -725,3 +725,19 @@ Create a focused branch, make one coherent change, run the relevant tests and bu
 ## License
 
 No license has been added yet. Until a license is provided, all rights are reserved by the repository owner.
+# Closed-beta publishing configuration
+
+New editor image uploads are stored in Vercel Blob and require the server-only
+`BLOB_READ_WRITE_TOKEN`. Existing IndexedDB `asset://` images remain readable in
+the editor, but publishing is intentionally blocked until those references are
+replaced by synchronized uploads. The database stores ownership and metadata;
+remote object deletion is explicit and a failed remote deletion keeps its
+database record so the operation can be retried.
+
+The global GitHub App integration is disabled unless
+`HTTPMAKER_ENABLE_GLOBAL_GITHUB_APP=true`. It shares one installation and is
+therefore only appropriate for a trusted, single-user development environment.
+It must remain disabled for a public multi-user beta until per-user installation
+authorization is implemented. The in-memory AI/maps rate limiter is similarly
+local-process protection, not a globally consistent serverless limiter; replace
+its adapter with distributed storage for production scale.

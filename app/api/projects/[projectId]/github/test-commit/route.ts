@@ -4,6 +4,7 @@ import { findProjectByIdAndOwner } from "@/features/projects/server/project.repo
 import { getInstallationClient } from "@/lib/github/get-installation-client";
 import { safelyParseWebsiteData } from "@/schemas/website.schema";
 import { buildWebsiteFiles } from "@/utils/exportWebsiteZip";
+import { githubFeatureDisabledResponse, isGlobalGitHubAppEnabled } from "@/lib/github/feature";
 
 type RouteContext = { params: Promise<{ projectId: string }> };
 
@@ -19,6 +20,7 @@ function parseGitHubRepository(url: string): { owner: string; repo: string } | n
 }
 
 export async function GET(_request: Request, context: RouteContext) {
+  if (!isGlobalGitHubAppEnabled()) return githubFeatureDisabledResponse();
   const session = await auth();
   const ownerId = session?.user?.id;
   if (!ownerId) return Response.json({ error: "Unauthorized." }, { status: 401 });
@@ -54,6 +56,7 @@ export async function GET(_request: Request, context: RouteContext) {
 }
 
 export async function POST(_request: Request, context: RouteContext) {
+  if (!isGlobalGitHubAppEnabled()) return githubFeatureDisabledResponse();
   const session = await auth();
   const ownerId = session?.user?.id;
   if (!ownerId) return Response.json({ error: "Unauthorized." }, { status: 401 });

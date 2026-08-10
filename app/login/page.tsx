@@ -1,7 +1,6 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import Button from "@/components/Button";
 import styles from "./login.module.css";
 
 export default function LoginPage() {
@@ -19,43 +18,6 @@ export default function LoginPage() {
         <p className={styles.description}>
           Sign in to continue building your website with HTTPMAKER.
         </p>
-
-        <form
-          className={styles.credentialsForm}
-          onSubmit={(event) => event.preventDefault()}
-        >
-          <div className={styles.field}>
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@example.com"
-              required
-            />
-          </div>
-
-          <div className={styles.field}>
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              placeholder="Enter your password"
-              required
-            />
-          </div>
-
-          <Button text="SIGN UP" type="submit" fullWidth />
-        </form>
-
-        <div className={styles.socialMessage}>
-          <div className={styles.line} />
-          <p className={styles.message}>Continue with</p>
-          <div className={styles.line} />
-        </div>
 
         <div className={styles.socialButtons}>
           <button

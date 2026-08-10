@@ -1,26 +1,26 @@
 import { z } from "zod";
 import { elementLinkMapSchema, elementStyleMapSchema } from "@/schemas/element-style.schema";
-import { alignmentSchema, animationSchema, animationSpeedSchema, nonEmptyStringSchema, sectionVariantSchema } from "@/schemas/shared.schema";
+import { alignmentSchema, animationSchema, animationSpeedSchema, boundedStringSchema, cssColorSchema, nonEmptyStringSchema, safeImageUrlSchema, sectionVariantSchema } from "@/schemas/shared.schema";
 
 export const websiteSectionPropsSchema = z.object({
-  title: z.string(), subtitle: z.string(), buttonText: z.string(), secondaryButtonText: z.string(),
-  imageUrl: z.string(), alignment: alignmentSchema, statLabel: z.string(), statValue: z.string(),
-  altText: z.string().optional(), items: z.array(z.string()).optional(),
+  title: boundedStringSchema, subtitle: boundedStringSchema, buttonText: boundedStringSchema, secondaryButtonText: boundedStringSchema,
+  imageUrl: safeImageUrlSchema, alignment: alignmentSchema, statLabel: boundedStringSchema, statValue: boundedStringSchema,
+  altText: boundedStringSchema.optional(), items: z.array(safeImageUrlSchema).max(50).optional(),
   formFields: z.array(z.object({
     id: nonEmptyStringSchema,
-    label: z.string(),
+    label: boundedStringSchema,
     type: z.enum(["text", "email", "tel", "textarea"]),
-    placeholder: z.string(),
+    placeholder: boundedStringSchema,
     required: z.boolean(),
   }).strict()).max(20).optional(),
-  mapEmbedUrl: z.string().optional(),
+  mapEmbedUrl: safeImageUrlSchema.optional(),
 }).strict();
 
 const persistedSectionShape = {
   id: nonEmptyStringSchema,
   variant: sectionVariantSchema,
-  backgroundColor: z.string().optional(),
-  backgroundImageUrl: z.string().optional(),
+  backgroundColor: cssColorSchema.optional(),
+  backgroundImageUrl: safeImageUrlSchema.optional(),
   backgroundImageFit: z.enum(["cover", "contain"]).optional(),
   navbarAppearance: z.enum(["transparent", "glass", "colored"]).optional(),
   navbarScrollBehavior: z.enum(["sticky", "hide-on-scroll"]).optional(),
@@ -30,7 +30,7 @@ const persistedSectionShape = {
   elementLinks: elementLinkMapSchema.optional(),
   animation: animationSchema.optional(),
   animationSpeed: animationSpeedSchema.optional(),
-  content: z.record(z.string(), z.string()).optional(),
+  content: z.record(z.string().max(160), boundedStringSchema).refine((value) => Object.keys(value).length <= 100, "Content contains too many entries.").optional(),
 };
 
 const sectionSchema = <T extends string>(type: T) => z.object({ type: z.literal(type), ...persistedSectionShape }).strict();

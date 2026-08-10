@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { jsonBodyError, readJsonBody } from "@/lib/server/request";
 
 const MAX_IMAGE_LENGTH = 2_800_000;
 
@@ -22,9 +23,9 @@ export async function PATCH(request: Request) {
 
   let body: unknown;
   try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "Request body must contain valid JSON." }, { status: 400 });
+    body = await readJsonBody(request, MAX_IMAGE_LENGTH + 1_000);
+  } catch (error) {
+    return jsonBodyError(error);
   }
 
   const image = typeof body === "object" && body !== null && "image" in body ? (body as { image?: unknown }).image : null;

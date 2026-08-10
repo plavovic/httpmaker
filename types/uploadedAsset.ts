@@ -1,1 +1,1 @@
-export type UploadedImageAsset = { id: string; ownerId: string; name: string; mimeType: string; size: number; width: number; height: number; dataUrl: string; createdAt: number };
+export type UploadedImageAsset = { id: string; ownerId: string; name: string; mimeType: string; size: number; width: number; height: number; dataUrl: string; createdAt: number; synchronized?: boolean; projectId?: string | null };

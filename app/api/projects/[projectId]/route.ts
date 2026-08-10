@@ -10,6 +10,9 @@ import {
 import { updateProjectSchema } from "@/features/projects/schemas/project.schema";
 import { updateProject } from "@/features/projects/server/project.repository";
 import { deleteProject } from "@/features/projects/server/project.repository";
+import { listProjectAssetStorageKeys } from "@/features/assets/server/asset.repository";
+import { getAssetStorage } from "@/lib/assets/storage";
+import { jsonBodyError, readJsonBody } from "@/lib/server/request";
 type ProjectRouteContext = {
   params: Promise<{
     projectId: string;
@@ -115,14 +118,9 @@ export async function PATCH(
   let body: unknown;
 
   try {
-    body = await request.json();
-  } catch {
-    return Response.json(
-      {
-        error: "Request body must contain valid JSON.",
-      },
-      { status: 400 },
-    );
+    body = await readJsonBody(request, 1_000_000);
+  } catch (error) {
+    return jsonBodyError(error);
   }
 
   const bodyResult = updateProjectSchema.safeParse(body);
@@ -201,6 +199,11 @@ export async function DELETE(
   }
 
   try {
+    const assetKeys = await listProjectAssetStorageKeys(paramsResult.data.projectId, ownerId);
+    if (assetKeys.length) {
+      const storage = getAssetStorage();
+      await Promise.all(assetKeys.map(({ storageKey }) => storage.deleteAsset(storageKey)));
+    }
     const deleteResult = await deleteProject(
       paramsResult.data.projectId,
       ownerId,
@@ -219,11 +222,11 @@ export async function DELETE(
       status: 204,
     });
   } catch (error: unknown) {
-    console.error("Failed to delete project:", error);
+    console.error("Failed to delete project or its remote assets:", error);
 
     return Response.json(
       {
-        error: "Unable to delete project.",
+        error: "Unable to delete project. Remote assets or storage configuration may require attention; no database records were removed.",
       },
       { status: 500 },
     );

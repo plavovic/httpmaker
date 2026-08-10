@@ -1,21 +1,21 @@
 import { z } from "zod";
-import { imageTreatmentSchema, nonEmptyStringSchema, spacingScaleSchema, visualDensitySchema } from "@/schemas/shared.schema";
+import { cssColorSchema, imageTreatmentSchema, safeImageUrlSchema, spacingScaleSchema, visualDensitySchema } from "@/schemas/shared.schema";
 
 export const websiteThemeSchema = z.object({
-  backgroundColor: nonEmptyStringSchema,
-  backgroundImageUrl: z.string().optional(),
+  backgroundColor: cssColorSchema,
+  backgroundImageUrl: safeImageUrlSchema.optional(),
   backgroundImageFit: z.enum(["cover", "contain"]).optional(),
-  surfaceColor: nonEmptyStringSchema,
-  primaryColor: nonEmptyStringSchema,
-  secondaryColor: nonEmptyStringSchema,
-  accentColor: nonEmptyStringSchema,
-  textColor: nonEmptyStringSchema,
-  mutedTextColor: nonEmptyStringSchema,
-  headingFont: nonEmptyStringSchema,
-  bodyFont: nonEmptyStringSchema,
+  surfaceColor: cssColorSchema,
+  primaryColor: cssColorSchema,
+  secondaryColor: cssColorSchema,
+  accentColor: cssColorSchema,
+  textColor: cssColorSchema,
+  mutedTextColor: cssColorSchema,
+  headingFont: z.string().min(1).max(200),
+  bodyFont: z.string().min(1).max(200),
   borderRadius: z.number().finite().min(0).max(200),
   spacingScale: spacingScaleSchema,
   visualDensity: visualDensitySchema,
   imageTreatment: imageTreatmentSchema,
-  fontFamily: nonEmptyStringSchema.optional(),
+  fontFamily: z.string().min(1).max(200).optional(),
 }).strict();

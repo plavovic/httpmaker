@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { createProjectSchema } from "@/features/projects/schemas/project.schema";
 import { createProject } from "@/features/projects/server/project.repository";
 import { listProjectsByOwner } from "@/features/projects/server/project.repository";
+import { jsonBodyError, readJsonBody } from "@/lib/server/request";
 
 export async function GET() {
     const session = await auth();
@@ -48,16 +49,9 @@ export async function POST(request: Request) {
   let body: unknown;
 
   try {
-    body = await request.json();
-  } catch {
-    return Response.json(
-      {
-        error: "Request body must contain valid JSON.",
-      },
-      {
-        status: 400,
-      },
-    );
+    body = await readJsonBody(request, 16_000);
+  } catch (error) {
+    return jsonBodyError(error);
   }
 
   const result = createProjectSchema.safeParse(body);

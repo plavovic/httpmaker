@@ -11,7 +11,7 @@ export const websiteSchema = z.object({
   presetId: designPresetIdSchema.optional(),
   isThemeCustomized: z.boolean().optional(),
   theme: websiteThemeSchema,
-  sections: z.array(websiteSectionSchema).min(1),
+  sections: z.array(websiteSectionSchema).min(1).max(50),
 }).strict();
 
 export const safelyParseWebsiteData = (input: unknown) => websiteSchema.safeParse(input);

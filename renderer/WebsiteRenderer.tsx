@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import SectionRenderer from "@/renderer/SectionRenderer";
 import FloatingElementToolbar from "@/components/editor/FloatingElementToolbar";
