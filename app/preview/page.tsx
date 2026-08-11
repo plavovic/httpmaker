@@ -2,22 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { initialWebsite } from "@/data/initialWebsite";
-import WebsiteRenderer from "@/renderer/WebsiteRenderer";
+import PublicWebsiteRenderer from "@/renderer/PublicWebsiteRenderer";
 import type { WebsiteJSON } from "@/types/website";
 import { readStoredWebsite } from "@/utils/editorStorage";
 import { listImageAssets, resolveWebsiteAssetReferences } from "@/utils/assetStorage";
 
 export default function PreviewPage() {
   const [website, setWebsite] = useState<WebsiteJSON | null>(null);
-
-  useEffect(() => {
-    document.documentElement.classList.add("website-preview-document");
-    document.body.classList.add("website-preview-document");
-    return () => {
-      document.documentElement.classList.remove("website-preview-document");
-      document.body.classList.remove("website-preview-document");
-    };
-  }, []);
 
   useEffect(() => {
     const stored = readStoredWebsite() ?? initialWebsite;
@@ -35,5 +26,5 @@ export default function PreviewPage() {
   }, []);
 
   if (!website) return <main className="min-h-screen bg-white" />;
-  return <WebsiteRenderer website={website} renderMode="preview" />;
+  return <PublicWebsiteRenderer website={website} />;
 }

@@ -24,21 +24,37 @@ export default function ResponsiveNavbar(props: Props) {
     };
   }, [scrollBehavior]);
 
+  useEffect(() => {
+    if (!open) return;
+    const closeMenu = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    const closeOnResize = () => {
+      if (window.innerWidth > 850) setOpen(false);
+    };
+    document.addEventListener("keydown", closeMenu);
+    window.addEventListener("resize", closeOnResize);
+    return () => {
+      document.removeEventListener("keydown", closeMenu);
+      window.removeEventListener("resize", closeOnResize);
+    };
+  }, [open]);
+
   const action = (key: "buttonText" | "secondaryButtonText", secondary = false) => section.props[key] ? (
     <button type="button" className={secondary ? "site-navbar-secondary" : "site-navbar-primary"} onClick={() => setOpen(false)}>
       <EditableText {...props} elementKey={key}>{section.props[key]}</EditableText>
     </button>
   ) : null;
 
-  return <nav ref={navRef} className={`site-navbar site-navbar-${props.variant} site-navbar-${appearance}`}>
+  return <nav ref={navRef} aria-label="Primary navigation" className={`site-navbar site-navbar-${props.variant} site-navbar-${appearance} ${open ? "site-navbar-menu-open" : ""}`}>
     <div className="site-navbar-brand">
       <p><EditableText {...props} elementKey="subtitle">{section.props.subtitle}</EditableText></p>
       <h3><EditableText {...props} elementKey="title">{section.props.title}</EditableText></h3>
     </div>
-    <button type="button" className="site-navbar-burger" aria-label="Toggle navigation menu" aria-expanded={open} onClick={(event) => { event.stopPropagation(); setOpen(value => !value); }}>
+    <button type="button" className="site-navbar-burger" aria-label={open ? "Close navigation menu" : "Open navigation menu"} aria-expanded={open} aria-controls={`site-navbar-actions-${section.id}`} onClick={(event) => { event.stopPropagation(); setOpen(value => !value); }}>
       <span /><span /><span />
     </button>
-    <div className={`site-navbar-actions ${open ? "site-navbar-actions-open" : ""}`}>
+    <div id={`site-navbar-actions-${section.id}`} className={`site-navbar-actions ${open ? "site-navbar-actions-open" : ""}`}>
       {action("buttonText")}
       {action("secondaryButtonText", true)}
     </div>
