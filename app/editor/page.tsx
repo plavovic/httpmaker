@@ -321,9 +321,11 @@ export default function EditorPage() {
         <section className="ide-workspace flex-1 min-h-0 overflow-hidden">
         <div className="flex h-full flex-col">
           <div ref={viewportRef} className="editor-viewport studio-viewport flex-1 min-h-0 overflow-auto cursor-grab" onDragOver={event=>{if(event.dataTransfer.types.includes("Files"))event.preventDefault()}} onDrop={event=>{if(!event.dataTransfer.files.length)return;event.preventDefault();void uploadFiles(Array.from(event.dataTransfer.files))}}>
-            <button type="button" className="asset-library-trigger" onClick={()=>setAssetLibraryOpen(true)}>Assets <span>{assets.length}</span></button>
-            {saveState==="Save failed"&&<button type="button" className="asset-library-trigger" style={{top:"4rem"}} onClick={()=>setRetrySave(value=>value+1)}>Retry save</button>}
-            {legacyReferences.length>0&&activeProjectId&&<button type="button" className="asset-library-trigger" style={{top:saveState==="Save failed"?"7rem":"4rem"}} disabled={assetBusy} onClick={()=>void migrateLegacyAssets()}>Upload local assets ({legacyReferences.length})</button>}
+            <div className="editor-floating-actions">
+              <button type="button" className="asset-library-trigger" onClick={()=>setAssetLibraryOpen(true)}>Assets <span>{assets.length}</span></button>
+              {saveState==="Save failed"&&<button type="button" className="asset-library-trigger" onClick={()=>setRetrySave(value=>value+1)}>Retry save</button>}
+              {legacyReferences.length>0&&activeProjectId&&<button type="button" className="asset-library-trigger asset-sync-trigger" disabled={assetBusy} onClick={()=>void migrateLegacyAssets()} title="Store browser-only images on the server">{assetBusy?"Syncing…":`Sync ${legacyReferences.length} local image${legacyReferences.length===1?"":"s"}`}</button>}
+            </div>
             {migrationProgress&&<span role="status" aria-live="polite" style={{position:"absolute",top:"1rem",right:"1rem",zIndex:20}}>{migrationProgress}</span>}
             <PreviewDashboard visible={viewMode === "dashboard"} website={displayedWebsite} aiActions={history.length} onWebsiteChange={(website) => { if (!websiteLocked) setWebsiteJSON(website, { label: "Apply website JSON" }); }} />
             {!websiteLocked&&editorTab==="design"&&<aside className="editor-control-drawer"><DesignPresetPanel website={websiteJSON} onChange={(website,label) => setWebsiteJSON(website,{label})}/></aside>}

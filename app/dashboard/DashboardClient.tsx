@@ -355,7 +355,7 @@ export default function DashboardClient({ user, initialProjects, githubEnabled }
       <section className={styles.workspace}>
         <div className={`${styles.heading} ${actionStyles.heroHeading}`}>
           <div><h1>{workspaceTitle}</h1><p>Continue or start the journey.</p></div>
-          <div><button type="button" className={`${styles.createButton} ${themeStyles.accentButton} ${flatStyles.squareCreate}`} onClick={() => setModalOpen(true)}>CREATE NEW PROJECT</button>{githubEnabled&&<button type="button" className={styles.createButton} onClick={()=>void connectGitHub()}>CONNECT GITHUB APP</button>}</div>
+          <div className={actionStyles.heroActions}><button type="button" className={`${styles.createButton} ${themeStyles.accentButton} ${flatStyles.squareCreate}`} onClick={() => setModalOpen(true)}>CREATE NEW PROJECT</button>{githubEnabled&&<button type="button" className={`${styles.createButton} ${themeStyles.accentButton} ${flatStyles.squareCreate}`} onClick={()=>void connectGitHub()}>CONNECT GITHUB APP</button>}</div>
         </div>
         {githubEnabled&&installations.length>0&&<div aria-label="Connected GitHub installations">{installations.map(installation=><span key={installation.id}>{installation.accountLogin} ({installation.status}) <button type="button" onClick={()=>void disconnectGitHub(installation.id)}>Disconnect</button></span>)}</div>}
         {error && <p className={styles.error}>{error}</p>}

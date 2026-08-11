@@ -2,8 +2,8 @@ import { Prisma } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { consumeGitHubNonce, findGitHubInstallationByExternalId, upsertGitHubInstallation } from "@/features/github/server/github.repository";
+import { getGitHubApp } from "@/lib/github/app";
 import { githubStateSecret, isGitHubAppConfigured } from "@/lib/github/config";
-import { getInstallationClient } from "@/lib/github/get-installation-client";
 import { hashGitHubNonce, verifyGitHubState } from "@/lib/github/state";
 
 const dashboard = (status: string) => `/dashboard?github=${encodeURIComponent(status)}`;
@@ -24,10 +24,15 @@ export async function GET(request: Request) {
   if (existing && existing.ownerId !== ownerId) redirect(dashboard("already-owned"));
   let account: { id: number; login: string; type?: string } | null = null;
   try {
-    const client = await getInstallationClient(installationId);
-    const response = await client.request("GET /installation");
+    const response = await getGitHubApp().octokit.request("GET /app/installations/{installation_id}", {
+      installation_id: Number(installationId),
+    });
     const verified = response.data.account;
-    if (verified && typeof verified !== "string") account = { id: verified.id, login: verified.login, type: verified.type };
+    if (verified && typeof verified !== "string") {
+      account = "login" in verified
+        ? { id: verified.id, login: verified.login, type: verified.type }
+        : { id: verified.id, login: verified.slug, type: "Enterprise" };
+    }
   } catch {
     console.error("GitHub installation verification failed.");
   }
