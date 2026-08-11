@@ -22,6 +22,7 @@ import { exportWebsiteZip } from "@/utils/exportWebsiteZip";
 import { safelyParseWebsiteData } from "@/schemas/website.schema";
 import { findLegacyAssetReferences } from "@/features/publishing/assets";
 import { createAutosaveCoordinator } from "@/utils/autosaveCoordinator";
+import HttpmakerLoadingScreen from "@/components/HttpmakerLoadingScreen";
 
 type PendingProposal = { proposal: AiPatchProposal; previewWebsite: WebsiteJSON; mode: AiMode; selectedSectionId?: string };
 const modeForPrompt = (message: string): AiMode => /\b(add|insert|create)\b.*\b(section|hero|navbar|about|carousel|features|contact|footer)\b/i.test(message) ? "add-section" : /\b(restyle|theme|palette|colors?|dark|light|design)\b/i.test(message) ? "restyle-website" : /\b(rewrite|copy|content)\b/i.test(message) ? "rewrite-content" : "edit-selected-section";
@@ -311,7 +312,7 @@ export default function EditorPage() {
   const displayedWebsite = useMemo(()=>resolveWebsiteAssetReferences(pendingProposal?.previewWebsite ?? websiteJSON,assets),[assets,pendingProposal,websiteJSON]);
   const websiteLocked = isProcessing || Boolean(pendingProposal);
 
-  if (!storageReady) return <main data-theme="light" className="ide-shell h-screen" aria-label="Loading editor" />;
+  if (!storageReady) return <HttpmakerLoadingScreen label="Opening your studio" />;
 
   return (
     <main data-theme={isLightStudioTheme(colorMode) ? "light" : "dark"} data-color-theme={colorMode} className="ide-shell studio-shell flex h-screen min-h-0 flex-col overflow-hidden">

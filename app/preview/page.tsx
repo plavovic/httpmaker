@@ -6,6 +6,7 @@ import PublicWebsiteRenderer from "@/renderer/PublicWebsiteRenderer";
 import type { WebsiteJSON } from "@/types/website";
 import { readStoredWebsite } from "@/utils/editorStorage";
 import { listImageAssets, resolveWebsiteAssetReferences } from "@/utils/assetStorage";
+import HttpmakerLoadingScreen from "@/components/HttpmakerLoadingScreen";
 
 export default function PreviewPage() {
   const [website, setWebsite] = useState<WebsiteJSON | null>(null);
@@ -25,6 +26,6 @@ export default function PreviewPage() {
       .catch(() => setWebsite(stored));
   }, []);
 
-  if (!website) return <main className="min-h-screen bg-white" />;
+  if (!website) return <HttpmakerLoadingScreen label="Rendering your website" />;
   return <PublicWebsiteRenderer website={website} />;
 }
