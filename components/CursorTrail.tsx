@@ -144,7 +144,7 @@ const TrailContainer = () => {
                 const delay = distanceFromMiddle * config.staggerOut;
 
                 layer.style.transition = `clip-path ${config.outDuration}ms ${config.easing}`;
-
+                
                 setTimeout(() => {
                     layer.style.clipPath = `polygon(50% ${startClipY}px, 50% ${startClipY}px, 50% ${endClipY}px, 50% ${endClipY}px)`;
                 }, delay);
