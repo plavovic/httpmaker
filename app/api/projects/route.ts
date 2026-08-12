@@ -4,6 +4,7 @@ import { createProjectSchema } from "@/features/projects/schemas/project.schema"
 import { createProject } from "@/features/projects/server/project.repository";
 import { listProjectsByOwner } from "@/features/projects/server/project.repository";
 import { jsonBodyError, readJsonBody } from "@/lib/server/request";
+import { projectCreateRateLimiter, rateLimitResponse } from "@/lib/server/rate-limit";
 
 export async function GET() {
     const session = await auth();
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
   if (!ownerId) {
     return Response.json({ error: "Unauthorized." }, { status: 401 });
   }
+  const rate=await projectCreateRateLimiter.consume(ownerId);if(!rate.allowed)return rateLimitResponse(rate.retryAfterSeconds);
 
   let body: unknown;
 

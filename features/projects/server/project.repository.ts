@@ -158,3 +158,10 @@ export async function initializeProjectPreset(projectId: string, ownerId: string
 export async function linkProjectRepository(projectId: string, ownerId: string, input: { installationId: string; repositoryId: string; fullName: string; htmlUrl: string; defaultBranch: string }) {
   return prisma.project.updateMany({ where: { id: projectId, ownerId }, data: { githubInstallationId: input.installationId, githubRepositoryId: input.repositoryId, githubRepositoryFullName: input.fullName, repositoryUrl: input.htmlUrl, githubDefaultBranch: input.defaultBranch } });
 }
+
+export async function unlinkProjectRepository(projectId: string, ownerId: string) {
+  return prisma.project.updateMany({
+    where: { id: projectId, ownerId },
+    data: { githubInstallationId: null, githubRepositoryId: null, githubRepositoryFullName: null, githubDefaultBranch: null, repositoryUrl: null },
+  });
+}

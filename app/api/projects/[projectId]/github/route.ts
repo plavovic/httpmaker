@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { auth } from "@/auth";
 import { findOwnedGitHubInstallation } from "@/features/github/server/github.repository";
-import { findProjectByIdAndOwner, linkProjectRepository } from "@/features/projects/server/project.repository";
+import { findProjectByIdAndOwner, linkProjectRepository, unlinkProjectRepository } from "@/features/projects/server/project.repository";
 import { getInstallationClient } from "@/lib/github/get-installation-client";
+import { githubRateLimiter, rateLimitResponse } from "@/lib/server/rate-limit";
 import { jsonBodyError, readJsonBody } from "@/lib/server/request";
 
 const schema = z.object({ installationId: z.string().min(1).max(100), repositoryId: z.string().regex(/^\d+$/).max(30) }).strict();
@@ -10,6 +11,8 @@ const schema = z.object({ installationId: z.string().min(1).max(100), repository
 export async function PUT(request: Request, context: { params: Promise<{ projectId: string }> }) {
   const ownerId = (await auth())?.user?.id;
   if (!ownerId) return Response.json({ error: "Unauthorized." }, { status: 401 });
+  const limit = await githubRateLimiter.consume(`github-link:${ownerId}`);
+  if (!limit.allowed) return rateLimitResponse(limit.retryAfterSeconds);
   let body: unknown; try { body = await readJsonBody(request, 8_000); } catch (error) { return jsonBodyError(error); }
   const input = schema.safeParse(body); if (!input.success) return Response.json({ error: "Invalid repository selection." }, { status: 400 });
   const projectId = (await context.params).projectId;
@@ -30,9 +33,9 @@ export async function PUT(request: Request, context: { params: Promise<{ project
 export async function DELETE(_request: Request, context: { params: Promise<{ projectId: string }> }) {
   const ownerId = (await auth())?.user?.id;
   if (!ownerId) return Response.json({ error: "Unauthorized." }, { status: 401 });
-  const project = await findProjectByIdAndOwner((await context.params).projectId, ownerId);
-  if (!project) return Response.json({ error: "Project not found." }, { status: 404 });
-  const { prisma } = await import("@/lib/prisma");
-  await prisma.project.update({ where: { id: project.id }, data: { githubInstallationId: null, githubRepositoryId: null, githubRepositoryFullName: null, githubDefaultBranch: null, repositoryUrl: null } });
+  const limit = await githubRateLimiter.consume(`github-unlink:${ownerId}`);
+  if (!limit.allowed) return rateLimitResponse(limit.retryAfterSeconds);
+  const result = await unlinkProjectRepository((await context.params).projectId, ownerId);
+  if (!result.count) return Response.json({ error: "Project not found." }, { status: 404 });
   return new Response(null, { status: 204 });
 }

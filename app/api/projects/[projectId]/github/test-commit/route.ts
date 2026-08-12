@@ -5,6 +5,7 @@ import { getInstallationClient } from "@/lib/github/get-installation-client";
 import { safelyParseWebsiteData } from "@/schemas/website.schema";
 import { buildWebsiteFiles } from "@/utils/exportWebsiteZip";
 import { findOwnedGitHubInstallation } from "@/features/github/server/github.repository";
+import { githubRateLimiter, rateLimitResponse } from "@/lib/server/rate-limit";
 
 type RouteContext = { params: Promise<{ projectId: string }> };
 
@@ -23,6 +24,8 @@ export async function GET(_request: Request, context: RouteContext) {
   const session = await auth();
   const ownerId = session?.user?.id;
   if (!ownerId) return Response.json({ error: "Unauthorized." }, { status: 401 });
+  const limit = await githubRateLimiter.consume(`github-read:${ownerId}`);
+  if (!limit.allowed) return rateLimitResponse(limit.retryAfterSeconds);
 
   const paramsResult = projectParamsSchema.safeParse(await context.params);
   if (!paramsResult.success) return Response.json({ error: "Invalid project ID." }, { status: 400 });
@@ -62,6 +65,8 @@ export async function POST(_request: Request, context: RouteContext) {
   const session = await auth();
   const ownerId = session?.user?.id;
   if (!ownerId) return Response.json({ error: "Unauthorized." }, { status: 401 });
+  const limit = await githubRateLimiter.consume(`github-write:${ownerId}`);
+  if (!limit.allowed) return rateLimitResponse(limit.retryAfterSeconds);
 
   const paramsResult = projectParamsSchema.safeParse(await context.params);
   if (!paramsResult.success) return Response.json({ error: "Invalid project ID." }, { status: 400 });

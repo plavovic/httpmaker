@@ -11,7 +11,9 @@ const configuredOrigin = () => {
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const data = await loadPublishedSite((await params).slug);
-  if (!data) return {};
+  // Resolve missing and unpublished sites before the response starts streaming so
+  // direct requests receive a real HTTP 404, not a 200 shell with a not-found UI.
+  if (!data) notFound();
   const navbar = data.website.sections.find((section) => section.type === "navbar");
   const hero = data.website.sections.find((section) => section.type === "hero");
   const origin = configuredOrigin();

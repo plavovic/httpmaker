@@ -5,6 +5,7 @@ import { AssetStorageConfigurationError, getAssetStorage } from "@/lib/assets/st
 import { isSupportedImageBytes, MAX_ASSET_BYTES, SUPPORTED_IMAGE_TYPES } from "@/lib/assets/validation";
 import { runIdempotentAssetMigration, uploadAssetWithRollback } from "@/features/assets/asset.service";
 import { readFormDataBody, RequestBodyTooLargeError } from "@/lib/server/request";
+import { assetUploadRateLimiter, rateLimitResponse } from "@/lib/server/rate-limit";
 
 const safeName = (name: string) => name.replace(/[\r\n]/g, " ").slice(0, 255) || "image";
 
@@ -19,6 +20,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const ownerId = (await auth())?.user?.id;
   if (!ownerId) return Response.json({ error: "Unauthorized." }, { status: 401 });
+  const rate=await assetUploadRateLimiter.consume(ownerId);if(!rate.allowed)return rateLimitResponse(rate.retryAfterSeconds);
   const declared = Number(request.headers.get("content-length"));
   if (Number.isFinite(declared) && declared > MAX_ASSET_BYTES + 100_000) return Response.json({ error: "Image exceeds the 10 MB limit." }, { status: 413 });
   let form: FormData;

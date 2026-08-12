@@ -3,6 +3,7 @@ import { findProjectByIdAndOwner } from "@/features/projects/server/project.repo
 import { isSupportedImageBytes, SUPPORTED_IMAGE_TYPES } from "@/lib/assets/validation";
 import { apiError } from "@/lib/server/api-error";
 import { readFormDataBody, RequestBodyTooLargeError } from "@/lib/server/request";
+import { publishRateLimiter, rateLimitResponse } from "@/lib/server/rate-limit";
 
 const MAX_ICON_BYTES = 512 * 1024;
 type Context = { params: Promise<{ projectId: string }> };
@@ -10,6 +11,7 @@ type Context = { params: Promise<{ projectId: string }> };
 export async function POST(request: Request, context: Context) {
   const ownerId=(await auth())?.user?.id;
   if(!ownerId)return apiError("UNAUTHENTICATED","Sign in to upload an icon.",401);
+  const rate=await publishRateLimiter.consume(ownerId);if(!rate.allowed)return rateLimitResponse(rate.retryAfterSeconds);
   const projectId=(await context.params).projectId;
   if(!(await findProjectByIdAndOwner(projectId,ownerId)))return apiError("PROJECT_NOT_FOUND","Project not found.",404);
   let form:FormData;

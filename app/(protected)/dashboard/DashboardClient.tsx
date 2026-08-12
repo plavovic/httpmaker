@@ -310,6 +310,7 @@ export default function DashboardClient({ user, initialProjects, githubEnabled }
               {githubEnabled&&<div className={styles.githubProfileStatus}>{activeGitHubInstallations.length?<><span className={styles.connectedDot}/><div><small>GitHub connected</small>{activeGitHubInstallations.map(installation=><strong key={installation.id}>@{installation.accountLogin}</strong>)}</div></>:<><span className={styles.disconnectedDot}/><div><small>GitHub not connected</small><button type="button" onClick={()=>void connectGitHub()}>Connect GitHub</button></div></>}</div>}
               <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading}>{uploading ? "Uploading…" : "Change profile picture"}</button>
               <button type="button" disabled>Account settings <small>Coming soon</small></button>
+              <button type="button" onClick={()=>router.push("/dashboard/settings/security")}>Security & sessions</button>
               <button type="button" disabled>Preferences <small>Coming soon</small></button>
               <button type="button" onClick={() => signOut({ callbackUrl: "/login" })}>Sign out</button>
             </div>}

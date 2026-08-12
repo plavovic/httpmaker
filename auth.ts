@@ -4,6 +4,9 @@ import GitHub from "next-auth/providers/github";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 
 import { prisma } from "@/lib/prisma";
+import { assertProductionAuthEnvironment } from "@/lib/server/env";
+
+assertProductionAuthEnvironment();
 
 export const {
     handlers,
@@ -17,6 +20,8 @@ export const {
 
     session: {
         strategy: "database",
+        maxAge: 7 * 24 * 60 * 60,
+        updateAge: 24 * 60 * 60,
     },
 
     callbacks: {

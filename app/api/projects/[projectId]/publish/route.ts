@@ -8,6 +8,7 @@ import { apiError } from "@/lib/server/api-error";
 import { readJsonBody, RequestBodyTooLargeError } from "@/lib/server/request";
 import { safelyParseWebsiteData } from "@/schemas/website.schema";
 import { findProjectAssetByPublicUrl } from "@/features/assets/server/asset.repository";
+import { publishRateLimiter, rateLimitResponse } from "@/lib/server/rate-limit";
 
 type Context = { params: Promise<{ projectId: string }> };
 
@@ -24,6 +25,7 @@ export async function GET(_request: Request, context: Context) {
 export async function POST(request: Request, context: Context) {
   const ownerId = (await auth())?.user?.id;
   if (!ownerId) return apiError("UNAUTHENTICATED", "Sign in to publish.", 401);
+  const rate=await publishRateLimiter.consume(ownerId);if(!rate.allowed)return rateLimitResponse(rate.retryAfterSeconds);
   const { projectId } = await context.params;
   let body: unknown = {};
   if (request.headers.get("content-length") !== "0") try { body = await readJsonBody(request, 800_000); } catch (error) { return error instanceof RequestBodyTooLargeError ? apiError("BODY_TOO_LARGE", "The request body is too large.", 413) : apiError("INVALID_JSON", "The request body must be valid JSON.", 400); }
@@ -53,6 +55,7 @@ export async function POST(request: Request, context: Context) {
 export async function DELETE(_request: Request, context: Context) {
   const ownerId = (await auth())?.user?.id;
   if (!ownerId) return apiError("UNAUTHENTICATED", "Sign in to unpublish.", 401);
+  const rate=await publishRateLimiter.consume(ownerId);if(!rate.allowed)return rateLimitResponse(rate.retryAfterSeconds);
   const { projectId } = await context.params;
   const result = await unpublishProject(projectId, ownerId);
   if (!result.count) return apiError("PROJECT_NOT_FOUND", "Project not found.", 404);

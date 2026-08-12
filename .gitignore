@@ -37,3 +37,6 @@ Thumbs.db
 
 # KEY
 *.pem
+.playwright/
+playwright-report/
+test-results/

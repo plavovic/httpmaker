@@ -1,10 +1,13 @@
 import { auth } from "@/auth";
 import { findOwnedGitHubInstallation } from "@/features/github/server/github.repository";
 import { getInstallationClient } from "@/lib/github/get-installation-client";
+import { githubRateLimiter, rateLimitResponse } from "@/lib/server/rate-limit";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   const ownerId = (await auth())?.user?.id;
   if (!ownerId) return Response.json({ error: "Unauthorized." }, { status: 401 });
+  const limit = await githubRateLimiter.consume(`github-repositories:${ownerId}`);
+  if (!limit.allowed) return rateLimitResponse(limit.retryAfterSeconds);
   const installation = await findOwnedGitHubInstallation((await context.params).id, ownerId);
   if (!installation) return Response.json({ error: "GitHub installation not found." }, { status: 404 });
   if (installation.status !== "active") return Response.json({ error: "GitHub installation is not active." }, { status: 409 });

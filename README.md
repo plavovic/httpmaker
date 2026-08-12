@@ -159,6 +159,43 @@ Draft preview flushes and awaits the latest save and refuses to open on failure.
 
 ## Security boundaries
 
+Private pages (`/dashboard/**`, `/editor/**`, `/preview/**`) share a server-only
+protected layout and are never authorized by client redirects. Private APIs derive
+identity from the Auth.js database session and use owner-scoped object queries. A
+direct private link opens without another login only while the browser still has a
+valid, unexpired database session; this is normal session persistence.
+
+Sessions last at most seven days and Auth.js updates them at most once per 24 hours.
+Users can inspect safe session timestamps and revoke other sessions at
+`/dashboard/settings/security`; session tokens are never returned. Production requires
+a random `AUTH_SECRET` of at least 32 bytes, GitHub OAuth credentials,
+`DATABASE_URL`, and an HTTPS `NEXT_PUBLIC_APP_URL`. Generate a secret with a trusted
+cryptographic password generator (for example `openssl rand -base64 32`) and place it
+in the deployment secret store—never commit it. Configure GitHub OAuth callback as
+`https://your-domain.example/api/auth/callback/github`.
+
+Custom browser mutations are same-origin checked. Production rate limiting uses an
+Upstash-compatible REST service configured by `RATE_LIMIT_REST_URL` and
+`RATE_LIMIT_REST_TOKEN`; sensitive operations fail closed if it is unavailable.
+Security headers include nosniff, DENY framing, restrictive permissions/referrer
+policies, short-rollout HSTS in production, and a CSP in report-only mode pending
+deployment telemetry.
+
+Deploy schema before application code:
+
+```bash
+npm run prisma:generate
+npx prisma migrate deploy
+npm run build
+```
+
+Run browser security tests against a disposable PostgreSQL database with:
+
+```bash
+npx playwright install chromium
+npm run test:security:browser
+```
+
 - Website strings and collections are bounded.
 - Colors use strict hex/RGB/HSL/approved-variable parsing; injected CSS grammar,
   braces, comments, `url()` and trailing tokens are rejected.
