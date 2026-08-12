@@ -7,6 +7,7 @@ import { prepareProjectPublication } from "@/features/publishing/server/prefligh
 import { apiError } from "@/lib/server/api-error";
 import { readJsonBody, RequestBodyTooLargeError } from "@/lib/server/request";
 import { safelyParseWebsiteData } from "@/schemas/website.schema";
+import { findProjectAssetByPublicUrl } from "@/features/assets/server/asset.repository";
 
 type Context = { params: Promise<{ projectId: string }> };
 
@@ -17,7 +18,7 @@ export async function GET(_request: Request, context: Context) {
   if (!project) return apiError("PROJECT_NOT_FOUND", "Project not found.", 404);
   const parsed = safelyParseWebsiteData(project.website);
   const unresolvedAssetCount = parsed.success ? findLegacyAssetReferences(parsed.data).length : 0;
-  return Response.json({ project: { id: project.id, name: project.name, slug: project.slug, isPublished: project.isPublished, updatedAt: project.updatedAt, publishedAt: project.publishedAt, draftRevision: project.draftRevision, publishedRevision: project.publishedRevision }, preflight: { draftValid: parsed.success, unresolvedAssetCount } });
+  return Response.json({ project: { id: project.id, name: project.name, slug: project.slug, isPublished: project.isPublished, updatedAt: project.updatedAt, publishedAt: project.publishedAt, draftRevision: project.draftRevision, publishedRevision: project.publishedRevision, publicationTitle: project.publicationTitle, publicationIconUrl: project.publicationIconUrl }, preflight: { draftValid: parsed.success, unresolvedAssetCount } });
 }
 
 export async function POST(request: Request, context: Context) {
@@ -34,8 +35,12 @@ export async function POST(request: Request, context: Context) {
     return apiError(preflight.status === 404 ? "PROJECT_NOT_FOUND" : preflight.status === 422 ? "DRAFT_UNPUBLISHABLE" : "INVALID_SLUG", message, preflight.status, preflight.body);
   }
   if (input.data.expectedRevision !== undefined && input.data.expectedRevision !== preflight.project.draftRevision) return apiError("DRAFT_CONFLICT", "The draft changed. Reload publishing details and try again.", 409, { currentRevision: preflight.project.draftRevision });
+  if (input.data.iconUrl) {
+    const icon = await findProjectAssetByPublicUrl(input.data.iconUrl, projectId, ownerId);
+    if (!icon || !["image/png", "image/jpeg", "image/webp", "image/gif"].includes(icon.mimeType)) return apiError("INVALID_PUBLICATION_ICON", "Choose an icon uploaded to this project.", 400);
+  }
   try {
-    const publication = await publishProject(projectId, ownerId, preflight.slug, preflight.website, preflight.project.draftRevision);
+    const publication = await publishProject(projectId, ownerId, preflight.slug, preflight.website, preflight.project.draftRevision, { title: input.data.title, iconUrl: input.data.iconUrl });
     if (!publication) return apiError("DRAFT_CONFLICT", "The draft changed while publishing. Reload and try again.", 409);
     return Response.json({ publication: { ...publication, path: `/${publication.slug}` } });
   } catch (error) {

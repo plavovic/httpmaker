@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const navbar = data.website.sections.find((section) => section.type === "navbar");
   const hero = data.website.sections.find((section) => section.type === "hero");
   const origin = configuredOrigin();
-  const title = navbar?.props.title.trim() || hero?.props.title.trim() || data.project.name || "HTTPMAKER site";
+  const title = data.project.publicationTitle?.trim() || navbar?.props.title.trim() || hero?.props.title.trim() || data.project.name || "HTTPMAKER site";
   return { title, description: hero?.props.subtitle || navbar?.props.subtitle || "Published with HTTPMAKER", applicationName:title, ...(origin ? { alternates: { canonical: `${origin}/${data.project.slug}` } } : {}) };
 }
 

@@ -8,9 +8,10 @@ export const contentType = "image/png";
 export default async function PublishedSiteIcon({ params }: { params: Promise<{ slug: string }> }) {
   const data = await loadPublishedSite((await params).slug);
   if (!data) notFound();
+  if (data.project.publicationIconUrl) return Response.redirect(data.project.publicationIconUrl, 307);
   const navbar = data.website.sections.find((section) => section.type === "navbar");
   const hero = data.website.sections.find((section) => section.type === "hero");
-  const name = navbar?.props.title.trim() || hero?.props.title.trim() || data.project.name || "Website";
+  const name = data.project.publicationTitle?.trim() || navbar?.props.title.trim() || hero?.props.title.trim() || data.project.name || "Website";
   const mark = name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase().slice(0, 2) || "W";
   const theme = data.website.theme;
 

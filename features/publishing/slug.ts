@@ -11,4 +11,5 @@ export function slugify(value: string) {
   return candidate.slice(0, 80).replace(/-$/g, "");
 }
 
-export const publishRequestSchema = z.object({ slug: slugSchema.optional(), expectedRevision: z.number().int().nonnegative().optional() }).strict();
+export const publicationTitleSchema = z.string().trim().min(1, "Enter a website title.").max(120, "The website title must be 120 characters or fewer.");
+export const publishRequestSchema = z.object({ slug: slugSchema.optional(), expectedRevision: z.number().int().nonnegative().optional(), title: publicationTitleSchema, iconUrl: z.string().url().max(2_000).nullable() }).strict();

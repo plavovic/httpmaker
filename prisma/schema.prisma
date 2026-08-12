@@ -83,6 +83,8 @@ model Project {
   publishedRevision Int?
   initialPresetId String?
   editorSetupCompletedAt DateTime?
+  publicationTitle String?
+  publicationIconUrl String?
   deletionState   String @default("active")
   deletionError   String?
 
