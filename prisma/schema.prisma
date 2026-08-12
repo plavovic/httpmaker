@@ -79,6 +79,9 @@ model Project {
   githubDefaultBranch String?
   slug             String? @unique
   publishedWebsite Json?
+  draftRevision    Int    @default(0)
+  deletionState   String @default("active")
+  deletionError   String?
 
   ownerId String
   owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
@@ -93,6 +96,7 @@ model Project {
 
   @@index([ownerId])
   @@index([githubInstallationId])
+  @@unique([id, ownerId])
 }
 
 model Asset {
@@ -106,13 +110,17 @@ model Asset {
   size       Int
   width      Int?
   height     Int?
+  migrationKey String?
+  deletionState String @default("active")
+  deletionError String?
   createdAt  DateTime @default(now())
 
   owner   User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId, ownerId], references: [id, ownerId], onDelete: Cascade)
 
   @@index([ownerId])
   @@index([projectId])
+  @@unique([ownerId, projectId, migrationKey])
 }
 
 model GitHubInstallation {

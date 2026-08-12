@@ -10,7 +10,8 @@ import {
 import { updateProjectSchema } from "@/features/projects/schemas/project.schema";
 import { updateProject } from "@/features/projects/server/project.repository";
 import { deleteProject } from "@/features/projects/server/project.repository";
-import { listProjectAssetStorageKeys } from "@/features/assets/server/asset.repository";
+import { setProjectDeletionState } from "@/features/projects/server/project.repository";
+import { deleteAssetRecord, listProjectAssetStorageKeys, setAssetDeletionState } from "@/features/assets/server/asset.repository";
 import { getAssetStorage } from "@/lib/assets/storage";
 import { jsonBodyError, readJsonBody } from "@/lib/server/request";
 type ProjectRouteContext = {
@@ -135,6 +136,10 @@ export async function PATCH(
     );
   }
 
+  if (bodyResult.data.website !== undefined && bodyResult.data.expectedRevision === undefined) {
+    return Response.json({ error: "expectedRevision is required when saving a draft." }, { status: 400 });
+  }
+
   try {
     const updateResult = await updateProject(
       paramsResult.data.projectId,
@@ -143,6 +148,10 @@ export async function PATCH(
     );
 
     if (updateResult.count === 0) {
+      const current = await findProjectByIdAndOwner(paramsResult.data.projectId, ownerId);
+      if (current && bodyResult.data.website !== undefined) {
+        return Response.json({ error: "Draft revision conflict.", code: "DRAFT_CONFLICT", currentRevision: current.draftRevision }, { status: 409 });
+      }
       return Response.json(
         {
           error: "Project not found.",
@@ -199,10 +208,25 @@ export async function DELETE(
   }
 
   try {
+    const project = await findProjectByIdAndOwner(paramsResult.data.projectId, ownerId);
+    if (!project) return Response.json({ error: "Project not found." }, { status: 404 });
+    await setProjectDeletionState(project.id, ownerId, "deleting");
     const assetKeys = await listProjectAssetStorageKeys(paramsResult.data.projectId, ownerId);
+    let removed = 0;
     if (assetKeys.length) {
       const storage = getAssetStorage();
-      await Promise.all(assetKeys.map(({ storageKey }) => storage.deleteAsset(storageKey)));
+      for (const asset of assetKeys) {
+        await setAssetDeletionState(asset.id, ownerId, "deleting");
+        try {
+          await storage.deleteAsset(asset.storageKey);
+          removed += 1;
+          await deleteAssetRecord(asset.id, ownerId);
+        } catch (error) {
+          await setAssetDeletionState(asset.id, ownerId, "delete_failed", "Project cleanup failed.").catch(() => undefined);
+          await setProjectDeletionState(project.id, ownerId, "delete_failed", `${removed} remote object(s) removed before cleanup failed.`).catch(() => undefined);
+          return Response.json({ error: "Project deletion is incomplete and can be retried.", removedRemoteObjects: removed, remainingAssets: assetKeys.length - removed, state: "delete_failed" }, { status: 502 });
+        }
+      }
     }
     const deleteResult = await deleteProject(
       paramsResult.data.projectId,
@@ -223,10 +247,11 @@ export async function DELETE(
     });
   } catch (error: unknown) {
     console.error("Failed to delete project or its remote assets:", error);
+    await setProjectDeletionState(paramsResult.data.projectId, ownerId, "delete_failed", "Final project cleanup failed; retry is required.").catch(() => undefined);
 
     return Response.json(
       {
-        error: "Unable to delete project. Remote assets or storage configuration may require attention; no database records were removed.",
+        error: "Project deletion is incomplete and can be retried.",
       },
       { status: 500 },
     );

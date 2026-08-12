@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { recordWebhookDelivery, updateInstallationStatus } from "@/features/github/server/github.repository";
+import { processGitHubWebhookDelivery } from "@/features/github/server/github.repository";
 import { verifyGitHubWebhookSignature } from "@/lib/github/webhook";
 
 export async function POST(request: Request) {
@@ -16,14 +16,11 @@ export async function POST(request: Request) {
   let payload: { action?: string; installation?: { id?: number } };
   try { payload = JSON.parse(body); } catch { return Response.json({ error: "Invalid webhook JSON." }, { status: 400 }); }
   try {
-    await recordWebhookDelivery(deliveryId, event);
-    if (event === "installation" && payload.installation?.id) {
-      const status = payload.action === "deleted" ? "deleted" : payload.action === "suspend" ? "suspended" : payload.action === "unsuspend" || payload.action === "created" || payload.action === "new_permissions_accepted" ? "active" : null;
-      if (status) await updateInstallationStatus(String(payload.installation.id), status);
-    }
+    const status = event === "installation" ? payload.action === "deleted" ? "deleted" : payload.action === "suspend" ? "suspended" : payload.action === "unsuspend" || payload.action === "created" || payload.action === "new_permissions_accepted" ? "active" : undefined : undefined;
+    await processGitHubWebhookDelivery({ deliveryId, event, ...(status && payload.installation?.id ? { installationId: String(payload.installation.id), status } : {}) });
     return Response.json({ ok: true });
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return Response.json({ ok: true, duplicate: true });
+    if ((error instanceof Prisma.PrismaClientKnownRequestError || (typeof error === "object" && error !== null && "code" in error)) && (error as { code?: string }).code === "P2002") return Response.json({ ok: true, duplicate: true });
     console.error("GitHub webhook processing failed.");
     return Response.json({ error: "Webhook processing failed." }, { status: 500 });
   }

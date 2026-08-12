@@ -11,6 +11,6 @@ export async function POST() {
   const expiresAt = Date.now() + 10 * 60_000;
   await createGitHubNonce(ownerId, hashGitHubNonce(nonce), new Date(expiresAt));
   const state = signGitHubState({ userId: ownerId, nonce, expiresAt }, githubStateSecret());
-  const slug = process.env.GITHUB_APP_SLUG!.trim();
-  return Response.json({ installationUrl: `https://github.com/apps/${encodeURIComponent(slug)}/installations/new?state=${encodeURIComponent(state)}` });
+  const clientId = process.env.GITHUB_APP_CLIENT_ID!.trim();
+  return Response.json({ installationUrl: `https://github.com/login/oauth/authorize?client_id=${encodeURIComponent(clientId)}&state=${encodeURIComponent(state)}` });
 }

@@ -88,6 +88,8 @@ export async function updateProject(
     where: {
       id: projectId,
       ownerId,
+      deletionState: "active",
+      ...(input.website !== undefined ? { draftRevision: input.expectedRevision } : {}),
     },
 
     data: {
@@ -97,6 +99,7 @@ export async function updateProject(
 
       ...(input.website !== undefined && {
         website: toPrismaJson(input.website),
+        draftRevision: { increment: 1 },
       }),
     },
   });
@@ -113,6 +116,9 @@ export async function deleteProject(
     },
   });
 }
+
+export const setProjectDeletionState = (projectId: string, ownerId: string, deletionState: string, deletionError: string | null = null) =>
+  prisma.project.updateMany({ where: { id: projectId, ownerId }, data: { deletionState, deletionError } });
 
 export const findPublishedProjectBySlug = (slug: string) => prisma.project.findFirst({ where: { slug, isPublished: true, publishedWebsite: { not: Prisma.DbNull } }, select: { name: true, slug: true, publishedWebsite: true, publishedAt: true } });
 

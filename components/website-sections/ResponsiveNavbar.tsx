@@ -25,18 +25,23 @@ export default function ResponsiveNavbar(props: Props) {
   }, [scrollBehavior]);
 
   useEffect(() => {
+    const nav = navRef.current;
+    if (!nav || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry.contentRect.width > 850) setOpen(false);
+    });
+    observer.observe(nav);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
     if (!open) return;
     const closeMenu = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
-    const closeOnResize = () => {
-      if (window.innerWidth > 850) setOpen(false);
-    };
     document.addEventListener("keydown", closeMenu);
-    window.addEventListener("resize", closeOnResize);
     return () => {
       document.removeEventListener("keydown", closeMenu);
-      window.removeEventListener("resize", closeOnResize);
     };
   }, [open]);
 

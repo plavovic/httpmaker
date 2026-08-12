@@ -42,6 +42,8 @@ BLOB_READ_WRITE_TOKEN=""
 
 GITHUB_APP_ID=""
 GITHUB_APP_SLUG=""
+GITHUB_APP_CLIENT_ID=""
+GITHUB_APP_CLIENT_SECRET=""
 GITHUB_APP_PRIVATE_KEY=""
 GITHUB_APP_PRIVATE_KEY_PATH=""
 GITHUB_APP_STATE_SECRET=""
@@ -64,8 +66,8 @@ Only GitHub OAuth is implemented. There is no email/password or Google login.
 
 ### Per-user GitHub App
 
-The GitHub App needs repository **Contents: read and write** permission. Configure
-its setup URL as:
+The GitHub App needs repository **Contents: read and write** permission. Enable
+user authorization and configure its callback URL as:
 
 ```text
 https://YOUR_HOST/api/github/installations/callback
@@ -77,9 +79,12 @@ Configure its webhook URL as:
 https://YOUR_HOST/api/github/webhook
 ```
 
-The connection flow creates signed, expiring, single-use state tied to the
-signed-in user. The callback verifies the installation with GitHub before it is
-stored. Installation IDs are unique across HTTPMAKER users. Repository listing,
+Install the App on the desired user or organization first, then use **Connect
+GitHub App**. The connection flow creates signed, expiring, single-use state tied
+to the signed-in user, exchanges the short-lived authorization code server-side,
+and accepts only installations returned by GitHub's user-access-token
+`GET /user/installations` endpoint. App authentication alone is never accepted
+as ownership proof. Installation IDs are unique across HTTPMAKER users. Repository listing,
 linking, commit reads, and pushes re-check the user-owned active installation and
 stable GitHub repository ID. Installation access tokens are generated only by
 Octokit on the server and are never stored or returned to the browser.
@@ -117,21 +122,25 @@ URL. Blob credentials never enter client code.
 
 Older IndexedDB images remain available as `asset://` references. The editor's
 **Upload local assets** action uploads each unique local image, replaces every
-matching reference, and saves after each successful replacement. It is safe to
-retry after partial failure and retains the original local copies. Publication
+matching reference, and saves after each successful replacement. Server records
+use a stable owner/project/local-asset identity, so retries reuse a tracked
+upload. Original local copies remain until the replacement draft is acknowledged. Publication
 stays blocked while any unresolved local reference remains.
 
 Deleting an image that is used by an owned draft or published snapshot returns
-`409`. Remote deletion occurs before database deletion; failures retain the
-database record for retry. Project deletion explicitly removes related remote
-objects before deleting database records and reports partial failures.
+`409`. Asset and project records enter `deleting`/`delete_failed` lifecycle
+states before remote cleanup. Missing remote objects are safe to retry, and
+project deletion reports the number already removed instead of claiming an
+all-or-nothing operation.
 
 ## Autosave, preview and publishing
 
-Autosave is debounced. Starting a newer save aborts the previous request, and a
-revision coordinator prevents stale success/failure responses from changing the
-current status. Failed work stays in browser recovery storage and exposes a
-Retry action.
+Autosave is debounced, but a new local revision immediately aborts the older
+client operation. Every draft write includes the last acknowledged server
+revision and PostgreSQL conditionally increments it, so an aborted or out-of-order
+request cannot overwrite a newer commit. Conflicts return `409` and are retried
+against the reported revision while browser recovery data remains available.
+Draft preview flushes and awaits the latest save and refuses to open on failure.
 
 - `/preview` is the labeled legacy browser-storage preview.
 - `/preview/[projectId]` is authenticated and renders the owned database draft.
@@ -207,6 +216,14 @@ npm run dev
    push, and verifies that only generated static files changed.
 10. Disconnect, suspend, or delete the installation and confirm later reads and
     pushes are blocked.
+
+Live GitHub and Blob checks are manual and were not performed by the automated
+suite. Use disposable accounts, an App, database, and Blob store first. Exercise
+webhook retry after a forced database failure, migration retry after an upload,
+and project deletion retry after one remote object. A failed migration/deletion
+is forward-fixed by retrying; do not roll back the schema while lifecycle records
+remain. The application should not be described as production-ready until these
+provider checks pass.
 
 ## Current limitations
 

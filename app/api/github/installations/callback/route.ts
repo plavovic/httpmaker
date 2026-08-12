@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { consumeGitHubNonce, findGitHubInstallationByExternalId, upsertGitHubInstallation } from "@/features/github/server/github.repository";
-import { getGitHubApp } from "@/lib/github/app";
+import { listInstallationsAuthorizedForCode } from "@/lib/github/user-authorization";
 import { githubStateSecret, isGitHubAppConfigured } from "@/lib/github/config";
 import { hashGitHubNonce, verifyGitHubState } from "@/lib/github/state";
 
@@ -15,30 +15,33 @@ export async function GET(request: Request) {
   const query = new URL(request.url).searchParams;
   const state = query.get("state") ?? "";
   const installationId = query.get("installation_id") ?? "";
-  if (!/^\d+$/.test(installationId)) redirect(dashboard("invalid-installation"));
+  const code = query.get("code") ?? "";
+  if (!code) redirect(dashboard(query.get("error") ? "cancelled" : "authorization-missing"));
+  if (installationId && !/^\d+$/.test(installationId)) redirect(dashboard("invalid-installation"));
   const payload = verifyGitHubState(state, githubStateSecret());
   if (!payload || payload.userId !== ownerId) redirect(dashboard("invalid-state"));
   const consumed = await consumeGitHubNonce(ownerId, hashGitHubNonce(payload.nonce));
   if (consumed.count !== 1) redirect(dashboard("expired-or-replayed"));
-  const existing = await findGitHubInstallationByExternalId(installationId);
-  if (existing && existing.ownerId !== ownerId) redirect(dashboard("already-owned"));
-  let account: { id: number; login: string; type?: string } | null = null;
+  let authorized: Awaited<ReturnType<typeof listInstallationsAuthorizedForCode>> = [];
   try {
-    const response = await getGitHubApp().octokit.request("GET /app/installations/{installation_id}", {
-      installation_id: Number(installationId),
-    });
-    const verified = response.data.account;
-    if (verified && typeof verified !== "string") {
-      account = "login" in verified
-        ? { id: verified.id, login: verified.login, type: verified.type }
-        : { id: verified.id, login: verified.slug, type: "Enterprise" };
-    }
+    authorized = await listInstallationsAuthorizedForCode(code);
   } catch {
     console.error("GitHub installation verification failed.");
+    redirect(dashboard("verification-temporary-failure"));
   }
-  if (!account) redirect(dashboard("verification-failed"));
+  const candidates = installationId ? authorized.filter(item => String(item.id) === installationId) : authorized;
+  if (!candidates.length) redirect(dashboard("installation-not-authorized"));
+  for (const item of candidates) {
+    const existing = await findGitHubInstallationByExternalId(String(item.id));
+    if (existing && existing.ownerId !== ownerId) redirect(dashboard("already-owned"));
+  }
   try {
-    await upsertGitHubInstallation({ ownerId, installationId, accountId: String(account.id), accountLogin: account.login, accountType: account.type ?? "User" });
+    for (const item of candidates) {
+      const account = item.account;
+      if (!account || typeof account === "string") continue;
+      const login = "login" in account && account.login ? account.login : "slug" in account && account.slug ? account.slug : `account-${account.id}`;
+      await upsertGitHubInstallation({ ownerId, installationId: String(item.id), accountId: String(account.id), accountLogin: login, accountType: account.type ?? ("slug" in account ? "Enterprise" : "User") });
+    }
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") redirect(dashboard("already-owned"));
     console.error("GitHub installation persistence failed.");

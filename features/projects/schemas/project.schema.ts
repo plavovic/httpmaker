@@ -20,6 +20,7 @@ export const updateProjectSchema = z
       .optional(),
 
     website: websiteSchema.optional(),
+    expectedRevision: z.number().int().nonnegative().optional(),
   })
   .refine(
     (data) =>

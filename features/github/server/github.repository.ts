@@ -10,3 +10,11 @@ export const createGitHubNonce = (ownerId: string, nonceHash: string, expiresAt:
 export const consumeGitHubNonce = (ownerId: string, nonceHash: string) => prisma.gitHubConnectionNonce.updateMany({ where: { ownerId, nonceHash, usedAt: null, expiresAt: { gt: new Date() } }, data: { usedAt: new Date() } });
 export const recordWebhookDelivery = (deliveryId: string, event: string) => prisma.gitHubWebhookDelivery.create({ data: { deliveryId, event } });
 export const updateInstallationStatus = (installationId: string, status: string) => prisma.gitHubInstallation.updateMany({ where: { installationId }, data: { status } });
+
+export const processGitHubWebhookDelivery = (input: { deliveryId: string; event: string; installationId?: string; status?: string }) =>
+  prisma.$transaction(async (tx) => {
+    await tx.gitHubWebhookDelivery.create({ data: { deliveryId: input.deliveryId, event: input.event } });
+    if (input.installationId && input.status) {
+      await tx.gitHubInstallation.updateMany({ where: { installationId: input.installationId }, data: { status: input.status } });
+    }
+  });

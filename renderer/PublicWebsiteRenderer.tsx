@@ -24,5 +24,5 @@ export default function PublicWebsiteRenderer({ website }: { website: WebsiteJSO
     };
   }, [website.theme.backgroundColor, website.theme.textColor]);
 
-  return <WebsiteRenderer website={website} renderMode="preview" />;
+  return <div style={{ minHeight: "100vh", backgroundColor: website.theme.backgroundColor, color: website.theme.textColor }}><WebsiteRenderer website={website} renderMode="preview" /></div>;
 }

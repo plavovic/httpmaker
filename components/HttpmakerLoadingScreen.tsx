@@ -4,16 +4,11 @@ import { useEffect, useRef, useState, type PointerEvent } from "react";
 import type { ColorMode } from "@/types/website";
 import { isLightStudioTheme, readStoredEditorTheme } from "@/utils/editorStorage";
 
-export default function HttpmakerLoadingScreen({ label = "Building your workspace", delayMs = 3000 }: { label?: string; delayMs?: number }) {
+export default function HttpmakerLoadingScreen({ label = "Building your workspace" }: { label?: string }) {
   const [theme, setTheme] = useState<ColorMode>("sky");
-  const [visible, setVisible] = useState(false);
   const loaderRef = useRef<HTMLElement>(null);
 
   useEffect(() => setTheme(readStoredEditorTheme()), []);
-  useEffect(() => {
-    const timer = window.setTimeout(() => setVisible(true), delayMs);
-    return () => window.clearTimeout(timer);
-  }, [delayMs]);
 
   const followPointer = (event: PointerEvent<HTMLElement>) => {
     if (event.pointerType === "touch") return;
@@ -23,8 +18,6 @@ export default function HttpmakerLoadingScreen({ label = "Building your workspac
     loader.style.setProperty("--loader-pointer-y", `${event.clientY}px`);
     loader.dataset.pointerActive = "true";
   };
-
-  if (!visible) return null;
 
   return <main
     ref={loaderRef}

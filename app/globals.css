@@ -818,7 +818,6 @@ body.website-preview-document > .site-renderer {
 .editable-site-button[data-button-hover="invert"]:hover{background:var(--button-hover-color)!important;color:var(--button-hover-text)!important;filter:invert(.08)}
 
 /* Sharper studio geometry. Keep profile and status dots circular. */
-.section-floating-controls { display: none !important; }
 .studio-shell .chat-message>p{border-radius:5px 9px 9px 9px!important}
 .studio-shell .chat-message-user>p{border-radius:9px 5px 9px 9px!important}
 .studio-shell .chat-composer,.studio-shell .ai-proposal,.studio-shell .editor-control-drawer{border-radius:7px!important}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import EditorSidebar, { type ChatMessage, type PromptHistoryItem } from "@/components/editor/EditorSidebar";
 import EditorToolbar, { type DeviceMode, type EditorTab } from "@/components/editor/EditorToolbar";
 import DesignPresetPanel from "@/components/editor/presets/DesignPresetPanel";
@@ -57,6 +57,9 @@ export default function EditorPage() {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const aiRequestRef = useRef<AbortController | null>(null);
   const autosaveCoordinatorRef = useRef(createAutosaveCoordinator());
+  const serverRevisionRef = useRef(0);
+  const saveTimerRef = useRef<number | undefined>(undefined);
+  const latestDraftRef = useRef(websiteJSON);
   const dragStateRef = useRef<{ isDragging: boolean; startX: number; startY: number }>({ isDragging: false, startX: 0, startY: 0 });
 
   useEffect(() => {
@@ -76,6 +79,7 @@ export default function EditorPage() {
             replaceWebsite(websiteResult.data);
             setActiveProjectId(projectId);
             setProjectName(body.project.name);
+            serverRevisionRef.current = body.project.draftRevision;
           }
         } catch (reason) {
           if (!cancelled) setAssetError(reason instanceof Error ? reason.message : "Unable to load project.");
@@ -138,26 +142,44 @@ export default function EditorPage() {
     try { localStorage.setItem(EDITOR_THEME_STORAGE_KEY, colorMode); } catch { /* The editor remains usable when browser storage is unavailable. */ }
   }, [assets, colorMode, storageReady, websiteJSON]);
 
+  useEffect(() => { latestDraftRef.current = websiteJSON; }, [websiteJSON]);
+
+  const persistDraft = useCallback(async (projectId: string, operation = autosaveCoordinatorRef.current.begin()) => {
+    const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ website: compactWebsiteAssetReferences(latestDraftRef.current, assets), expectedRevision: serverRevisionRef.current }),
+      signal: operation.signal,
+    });
+    const body = await response.json();
+    if (response.status === 409) {
+      serverRevisionRef.current = body.currentRevision;
+      throw Object.assign(new Error("Draft conflict"), { conflict: true });
+    }
+    if (!response.ok) throw new Error(body.error ?? "Save failed");
+    if (autosaveCoordinatorRef.current.isCurrent(operation)) {
+      serverRevisionRef.current = body.project.draftRevision;
+      setSaveState("All changes saved");
+    }
+  }, [assets]);
+
   useEffect(() => {
     if (!storageReady || !activeProjectId) return;
+    const operation = autosaveCoordinatorRef.current.begin();
     setSaveState("Saving…");
-    const timer = window.setTimeout(async () => {
-      const operation = autosaveCoordinatorRef.current.begin();
+    window.clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = window.setTimeout(async () => {
       try {
-        const response = await fetch(`/api/projects/${encodeURIComponent(activeProjectId)}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ website: compactWebsiteAssetReferences(websiteJSON, assets) }),
-          signal: operation.signal,
-        });
-        if (!response.ok) throw new Error();
-        if (autosaveCoordinatorRef.current.isCurrent(operation)) setSaveState("All changes saved");
-      } catch {
-        if (autosaveCoordinatorRef.current.isCurrent(operation)) setSaveState("Save failed");
+        await persistDraft(activeProjectId, operation);
+      } catch (reason) {
+        if (autosaveCoordinatorRef.current.isCurrent(operation)) {
+          if (reason instanceof Error && "conflict" in reason) setSaveState("Save conflicted");
+          else setSaveState("Save failed");
+        }
       }
     }, 700);
-    return () => window.clearTimeout(timer);
-  }, [activeProjectId, assets, retrySave, storageReady, websiteJSON]);
+    return () => window.clearTimeout(saveTimerRef.current);
+  }, [activeProjectId, persistDraft, retrySave, storageReady, websiteJSON]);
 
   useEffect(() => {
     if (editorTab === "ai") return;
@@ -232,7 +254,7 @@ export default function EditorPage() {
   const removeAsset=async(id:string)=>{if(!ownerId)return;const asset=assets.find(item=>item.id===id);if(asset?.synchronized){const response=await fetch(`/api/assets/${encodeURIComponent(id)}`,{method:"DELETE"});if(!response.ok){const body=await response.json();throw new Error(body.error??"Asset deletion failed.")}}else await deleteImageAsset(id,ownerId);setAssets(current=>current.filter(item=>item.id!==id))};
   const setAssetAsBackground=(asset:UploadedImageAsset)=>{setWebsiteJSON(current=>({...current,isThemeCustomized:true,theme:{...current.theme,backgroundImageUrl:assetReference(asset)}}),{label:"Set page background"});setAssetLibraryOpen(false)};
   const legacyReferences=useMemo(()=>findLegacyAssetReferences(websiteJSON),[websiteJSON]);
-  const migrateLegacyAssets=async()=>{if(!activeProjectId||!ownerId||!legacyReferences.length)return;setAssetBusy(true);setAssetError("");let working=websiteJSON;try{for(let index=0;index<legacyReferences.length;index+=1){const reference=legacyReferences[index];setMigrationProgress(`Uploading local asset ${index+1} of ${legacyReferences.length}…`);const local=assets.find(asset=>!asset.synchronized&&createAssetReference(asset.id)===reference);if(!local)throw new Error(`Local image ${reference} is unavailable in this browser.`);const blob=await fetch(local.dataUrl).then(response=>response.blob());const file=new File([blob],local.name,{type:local.mimeType});const form=new FormData();form.set("file",file);form.set("projectId",activeProjectId);const uploadResponse=await fetch("/api/assets",{method:"POST",body:form});const uploadBody=await uploadResponse.json();if(!uploadResponse.ok)throw new Error(uploadBody.error??`Could not upload ${local.name}.`);working=replaceWebsiteAssetReferences(working,new Map([[reference,uploadBody.asset.publicUrl]]));const saveResponse=await fetch(`/api/projects/${encodeURIComponent(activeProjectId)}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({website:working})});if(!saveResponse.ok)throw new Error((await saveResponse.json()).error??"Uploaded image, but could not save the migrated draft. Retry is safe.");setAssets(current=>current.some(asset=>asset.id===uploadBody.asset.id)?current:[{id:uploadBody.asset.id,ownerId,name:uploadBody.asset.name,mimeType:uploadBody.asset.mimeType,size:uploadBody.asset.size,width:uploadBody.asset.width??0,height:uploadBody.asset.height??0,dataUrl:uploadBody.asset.publicUrl,createdAt:new Date(uploadBody.asset.createdAt).getTime(),synchronized:true,projectId:uploadBody.asset.projectId},...current]);replaceWebsite(working)}setMigrationProgress("Local assets uploaded. Original browser copies were kept.");setSaveState("All changes saved")}catch(reason){setAssetError(reason instanceof Error?reason.message:"Local asset migration failed. Retry is safe.");setMigrationProgress("")}finally{setAssetBusy(false)}};
+  const migrateLegacyAssets=async()=>{if(!activeProjectId||!ownerId||!legacyReferences.length)return;autosaveCoordinatorRef.current.begin();window.clearTimeout(saveTimerRef.current);setAssetBusy(true);setAssetError("");let working=websiteJSON;try{for(let index=0;index<legacyReferences.length;index+=1){const reference=legacyReferences[index];setMigrationProgress(`Uploading local asset ${index+1} of ${legacyReferences.length}…`);const local=assets.find(asset=>!asset.synchronized&&createAssetReference(asset.id)===reference);if(!local)throw new Error(`Local image ${reference} is unavailable in this browser.`);const blob=await fetch(local.dataUrl).then(response=>response.blob());const file=new File([blob],local.name,{type:local.mimeType});const form=new FormData();form.set("file",file);form.set("projectId",activeProjectId);form.set("migrationKey",local.id);const uploadResponse=await fetch("/api/assets",{method:"POST",body:form});const uploadBody=await uploadResponse.json();if(!uploadResponse.ok)throw new Error(uploadBody.error??`Could not upload ${local.name}.`);working=replaceWebsiteAssetReferences(latestDraftRef.current,new Map([[reference,uploadBody.asset.publicUrl]]));const saveResponse=await fetch(`/api/projects/${encodeURIComponent(activeProjectId)}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({website:working,expectedRevision:serverRevisionRef.current})});const saveBody=await saveResponse.json();if(!saveResponse.ok)throw new Error(saveBody.error??"Uploaded image, but could not save the migrated draft. Retry is safe.");serverRevisionRef.current=saveBody.project.draftRevision;setAssets(current=>current.some(asset=>asset.id===uploadBody.asset.id)?current:[{id:uploadBody.asset.id,ownerId,name:uploadBody.asset.name,mimeType:uploadBody.asset.mimeType,size:uploadBody.asset.size,width:uploadBody.asset.width??0,height:uploadBody.asset.height??0,dataUrl:uploadBody.asset.publicUrl,createdAt:new Date(uploadBody.asset.createdAt).getTime(),synchronized:true,projectId:uploadBody.asset.projectId},...current]);replaceWebsite(working)}setMigrationProgress("Local assets uploaded. Original browser copies were kept.");setSaveState("All changes saved")}catch(reason){setAssetError(reason instanceof Error?reason.message:"Local asset migration failed. Retry is safe.");setMigrationProgress("")}finally{setAssetBusy(false)}};
 
   const updateElement = (sectionId: string, elementKey: EditableElementKey, value: string) => setWebsiteJSON((current) => {
     const formMatch=elementKey.match(/^content\.formField\.(.+)\.(label|placeholder)$/);
@@ -258,8 +280,18 @@ export default function EditorPage() {
   const updateSectionHeight = (sectionId:string, heightVh:number) => setWebsiteJSON(current=>({...current,sections:current.sections.map(section=>section.id===sectionId?{...section,heightVh}:section)}),{label:"Resize section",group:`section-height:${sectionId}`});
   const moveSection = (sourceId:string,targetId:string)=>setWebsiteJSON((current)=>{const from=current.sections.findIndex(s=>s.id===sourceId);const to=current.sections.findIndex(s=>s.id===targetId);if(from<0||to<0||from===to)return current;const sections=[...current.sections];const [moved]=sections.splice(from,1);sections.splice(to,0,moved);return {...current,sections}}, { label: "Move section" });
 
-  const openPreview = () => {
+  const openPreview = async () => {
     saveStoredWebsite(compactWebsiteAssetReferences(websiteJSON,assets));
+    if (activeProjectId) {
+      window.clearTimeout(saveTimerRef.current);
+      setSaveState("Saving…");
+      try { await persistDraft(activeProjectId); }
+      catch (reason) {
+        setSaveState(reason instanceof Error && "conflict" in reason ? "Save conflicted" : "Save failed");
+        setAssetError("Preview was not opened because the latest draft could not be saved. Resolve the save error and retry.");
+        return;
+      }
+    }
     window.open(activeProjectId?`/preview/${encodeURIComponent(activeProjectId)}`:"/preview", "_blank", "noopener,noreferrer");
   };
 
