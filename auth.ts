@@ -1,10 +1,11 @@
 import NextAuth from "next-auth";
-import GitHub from "next-auth/providers/github";
-
 import { PrismaAdapter } from "@auth/prisma-adapter";
 
 import { prisma } from "@/lib/prisma";
 import { assertProductionAuthEnvironment } from "@/lib/server/env";
+import { isVerifiedGoogleProfile } from "@/lib/server/oauth-config";
+import { authProviders } from "@/lib/server/auth-providers";
+import { clientSession } from "@/lib/auth-session";
 
 assertProductionAuthEnvironment();
 
@@ -16,7 +17,12 @@ export const {
 } = NextAuth({
     adapter: PrismaAdapter(prisma),
 
-    providers: [GitHub],
+    providers: authProviders(),
+
+    pages: {
+        signIn: "/login",
+        error: "/login",
+    },
 
     session: {
         strategy: "database",
@@ -25,12 +31,11 @@ export const {
     },
 
     callbacks: {
+        signIn({ account, profile }) {
+            return isVerifiedGoogleProfile(account, profile ?? undefined);
+        },
         session({ session, user }) {
-            if (session.user) {
-                session.user.id = user.id;
-            }
-
-            return session;
+            return clientSession(session, user);
         },
     },
 });

@@ -6,7 +6,7 @@ snapshots, static ZIP/GitHub export, and a deterministic mock AI proposal flow.
 
 ## Supported workflow
 
-1. Sign in with GitHub OAuth.
+1. Sign in with GitHub or Google OAuth.
 2. Create or open an owned project.
 3. Edit the database-backed draft and upload images.
 4. Preview the latest confirmed draft at `/preview/[projectId]`.
@@ -21,7 +21,7 @@ user and derive ownership from `session.user.id`.
 ## Technology
 
 - Next.js 15.5.23 App Router, React 19.1.2, TypeScript
-- Auth.js GitHub OAuth with database sessions
+- Auth.js GitHub and optional Google OAuth with database sessions
 - PostgreSQL, Prisma 7.9.1 and `@prisma/adapter-pg`
 - Zod WebsiteJSON validation
 - Vercel Blob behind a server-only storage adapter
@@ -38,6 +38,8 @@ HTTPMAKER_AI_PROVIDER="mock"
 AUTH_SECRET="a-random-secret-at-least-32-characters"
 AUTH_GITHUB_ID=""
 AUTH_GITHUB_SECRET=""
+AUTH_GOOGLE_ID=""
+AUTH_GOOGLE_SECRET=""
 BLOB_READ_WRITE_TOKEN=""
 
 GITHUB_APP_ID=""
@@ -62,7 +64,40 @@ Configure the OAuth callback as:
 https://YOUR_HOST/api/auth/callback/github
 ```
 
-Only GitHub OAuth is implemented. There is no email/password or Google login.
+### Google OAuth
+
+In Google Cloud Console, create/select a project, configure the Google Auth
+Platform consent screen and audience, and create an OAuth client of type **Web
+application**. If the consent screen is in testing mode, add each permitted
+Google account as a test user.
+
+Authorized JavaScript origins must contain exactly:
+
+```text
+http://localhost:3000
+https://YOUR_PRODUCTION_DOMAIN
+```
+
+Authorized redirect URIs must contain exactly:
+
+```text
+http://localhost:3000/api/auth/callback/google
+https://YOUR_PRODUCTION_DOMAIN/api/auth/callback/google
+```
+
+Set `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` in `.env` locally and in the
+deployment platform's server-side secret store, then restart the development
+server. Both absent leaves Google hidden for GitHub-only development; providing
+only one fails startup. Production must use HTTPS. Google compares scheme,
+host, port, path, and trailing-slash behavior exactly; `redirect_uri_mismatch`
+means the URI sent by HTTPMAKER does not exactly match the Google Cloud entry.
+
+OAuth accounts are not merged based only on matching email text. If an email is
+already attached through another provider, sign in with that original provider.
+Explicit authenticated account linking is intentionally not implemented.
+Signing in with Google does not connect GitHub repositories; that remains the
+separate, optional GitHub App connection described below and is not required for
+ordinary editing, previewing, or publishing.
 
 ### Per-user GitHub App
 
@@ -168,7 +203,8 @@ valid, unexpired database session; this is normal session persistence.
 Sessions last at most seven days and Auth.js updates them at most once per 24 hours.
 Users can inspect safe session timestamps and revoke other sessions at
 `/dashboard/settings/security`; session tokens are never returned. Production requires
-a random `AUTH_SECRET` of at least 32 bytes, GitHub OAuth credentials,
+a random `AUTH_SECRET` of at least 32 bytes, GitHub OAuth credentials, the complete
+Google credential pair when Google login is enabled,
 `DATABASE_URL`, and an HTTPS `NEXT_PUBLIC_APP_URL`. Generate a secret with a trusted
 cryptographic password generator (for example `openssl rand -base64 32`) and place it
 in the deployment secret store—never commit it. Configure GitHub OAuth callback as
