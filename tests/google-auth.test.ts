@@ -1,6 +1,6 @@
 import {describe,expect,it} from "vitest";
 import {friendlyAuthError} from "@/lib/auth-errors";
-import {googleOAuthConfig,isVerifiedGoogleProfile} from "@/lib/server/oauth-config";
+import {googleOAuthConfig,isVerifiedGoogleProfile,oauthProfileImage} from "@/lib/server/oauth-config";
 import {authProviders} from "@/lib/server/auth-providers";
 import {safeCallbackPath} from "@/lib/server/route-policy";
 import {clientSession} from "@/lib/auth-session";
@@ -20,6 +20,19 @@ describe("Google identity policy",()=>{
   it("rejects unverified or missing Google verification",()=>{expect(isVerifiedGoogleProfile({provider:"google"},{email_verified:false})).toBe(false);expect(isVerifiedGoogleProfile({provider:"google"},{})).toBe(false)});
   it("returns only the database user ID and no provider tokens",()=>{const result=clientSession({user:{name:"A",email:"a@example.test"},expires:"2099-01-01"},{id:"database-user",name:"A",email:"a@example.test",image:null});expect(result.user?.id).toBe("database-user");expect(result).not.toHaveProperty("access_token");expect(result).not.toHaveProperty("refresh_token")});
   it("keeps Auth.js safe account linking and generic account uniqueness",()=>{const source=readFileSync(join(process.cwd(),"auth.ts"),"utf8");const schema=readFileSync(join(process.cwd(),"prisma/schema.prisma"),"utf8");expect(source).not.toContain("allowDangerousEmailAccountLinking");expect(schema).toContain("@@unique([provider, providerAccountId])")});
+});
+
+describe("OAuth profile pictures",()=>{
+  it("reads Google and GitHub profile images",()=>{
+    expect(oauthProfileImage({provider:"google"},{picture:"https://lh3.googleusercontent.com/avatar"})).toBe("https://lh3.googleusercontent.com/avatar");
+    expect(oauthProfileImage({provider:"github"},{avatar_url:"https://avatars.githubusercontent.com/u/1?v=4"})).toBe("https://avatars.githubusercontent.com/u/1?v=4");
+  });
+
+  it("rejects unrelated, malformed, and insecure profile images",()=>{
+    expect(oauthProfileImage({provider:"other"},{picture:"https://example.com/avatar"})).toBeNull();
+    expect(oauthProfileImage({provider:"google"},{picture:"not-a-url"})).toBeNull();
+    expect(oauthProfileImage({provider:"github"},{avatar_url:"http://example.com/avatar"})).toBeNull();
+  });
 });
 
 describe("login safety",()=>{

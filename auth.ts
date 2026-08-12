@@ -3,7 +3,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 
 import { prisma } from "@/lib/prisma";
 import { assertProductionAuthEnvironment } from "@/lib/server/env";
-import { isVerifiedGoogleProfile } from "@/lib/server/oauth-config";
+import { isVerifiedGoogleProfile, oauthProfileImage } from "@/lib/server/oauth-config";
 import { authProviders } from "@/lib/server/auth-providers";
 import { clientSession } from "@/lib/auth-session";
 
@@ -31,8 +31,19 @@ export const {
     },
 
     callbacks: {
-        signIn({ account, profile }) {
-            return isVerifiedGoogleProfile(account, profile ?? undefined);
+        async signIn({ user, account, profile }) {
+            if (!isVerifiedGoogleProfile(account, profile ?? undefined)) return false;
+
+            const image = oauthProfileImage(account, profile ?? undefined);
+            if (user.id && !user.image && image) {
+                await prisma.user.updateMany({
+                    where: { id: user.id, image: null },
+                    data: { image },
+                });
+                user.image = image;
+            }
+
+            return true;
         },
         session({ session, user }) {
             return clientSession(session, user);

@@ -14,3 +14,20 @@ export function googleOAuthConfig(environment: Record<string,string|undefined> =
 export function isVerifiedGoogleProfile(account: { provider?: string } | null | undefined, profile?: Record<string, unknown>) {
   return account?.provider !== "google" || profile?.email_verified === true;
 }
+
+export function oauthProfileImage(account: { provider?: string } | null | undefined, profile?: Record<string, unknown>) {
+  const candidate = account?.provider === "google"
+    ? profile?.picture
+    : account?.provider === "github"
+      ? profile?.avatar_url
+      : undefined;
+
+  if (typeof candidate !== "string") return null;
+
+  try {
+    const url = new URL(candidate);
+    return url.protocol === "https:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
