@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 const unsafe=new Set(["POST","PUT","PATCH","DELETE"]);
-const exempt=(pathname:string)=>pathname.startsWith("/api/auth/")||pathname==="/api/github/webhook";
+const exempt=(pathname:string)=>pathname.startsWith("/api/auth/")||pathname==="/api/github/webhook"||pathname==="/api/assets/upload";
 const privatePath=(pathname:string)=>["/dashboard","/editor","/preview","/api/profile","/api/projects","/api/assets","/api/ai","/api/maps","/api/github/installations","/api/sessions"].some(prefix=>pathname===prefix||pathname.startsWith(`${prefix}/`));
 const systemRootPaths=new Set(["","login","dashboard","editor","preview","sites","api"]);
 export async function middleware(request:NextRequest){

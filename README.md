@@ -24,7 +24,7 @@ user and derive ownership from `session.user.id`.
 - Auth.js GitHub and optional Google OAuth with database sessions
 - PostgreSQL, Prisma 7.9.1 and `@prisma/adapter-pg`
 - Zod WebsiteJSON validation
-- Vercel Blob behind a server-only storage adapter
+- Vercel Blob direct browser uploads with server authorization and validation
 - Per-user GitHub App installations through Octokit
 - Vitest plus the existing deterministic Node test suites
 
@@ -154,10 +154,11 @@ by `npx prisma migrate deploy`.
 
 ## Image assets
 
-New JPEG, PNG, WebP, and GIF uploads are authenticated, magic-byte checked,
-limited to 10 MB, stored in Vercel Blob using random keys, and recorded in the
-database with user/project ownership. WebsiteJSON stores the resulting HTTPS
-URL. Blob credentials never enter client code.
+New JPEG, PNG, WebP, and GIF uploads are authorized by a small authenticated
+request, sent directly from the browser to Blob, then magic-byte checked by the
+trusted completion callback before the owner-scoped record is exposed. The
+10 MB bytes never pass through a Vercel Function and Blob credentials never
+enter client code.
 
 Older IndexedDB images remain available as `asset://` references. The editor's
 **Upload local assets** action uploads each unique local image, replaces every
@@ -181,7 +182,6 @@ request cannot overwrite a newer commit. Conflicts return `409` and are retried
 against the reported revision while browser recovery data remains available.
 Draft preview flushes and awaits the latest save and refuses to open on failure.
 
-- `/preview` is the labeled legacy browser-storage preview.
 - `/preview/[projectId]` is authenticated and renders the owned database draft.
 - `/[slug]` is public and renders only a valid published snapshot.
 - `/sites/[slug]` permanently redirects to the root URL only for an existing live publication.
@@ -237,9 +237,8 @@ npm run test:security:browser
   braces, comments, `url()` and trailing tokens are rejected.
 - Image and link protocols use explicit allowlists.
 - JSON and multipart routes enforce body limits.
-- AI and Maps require authentication and use a fail-closed in-memory rate-limit
-  adapter. This adapter is process-local and must be replaced with distributed
-  storage for globally consistent serverless limits.
+- AI, Maps, publishing, project creation, assets, and GitHub-sensitive actions
+  use the distributed fail-closed production rate limiter.
 - Maps resolves only secure `maps.app.goo.gl` inputs and returns bounded generic
   errors.
 - AI remains the deterministic mock provider; no arbitrary AI HTML or React is

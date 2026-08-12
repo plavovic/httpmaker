@@ -1,38 +1,7 @@
 import "server-only";
-
-export type RateLimitResult = { allowed: boolean; retryAfterSeconds: number };
-export interface RateLimiter { consume(key: string): Promise<RateLimitResult> }
-
-export function createDistributedRateLimiter(limit:number,windowMs:number):RateLimiter{
-  const url=process.env.RATE_LIMIT_REST_URL;const token=process.env.RATE_LIMIT_REST_TOKEN;
-  if(!url||!token)return{async consume(){return{allowed:false,retryAfterSeconds:Math.ceil(windowMs/1000)}}};
-  return{async consume(key){try{const bucket=`httpmaker:${Math.floor(Date.now()/windowMs)}:${key}`;const response=await fetch(`${url}/pipeline`,{method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify([["INCR",bucket],["PEXPIRE",bucket,String(windowMs),"NX"]]),cache:"no-store"});if(!response.ok)throw new Error("rate limit provider unavailable");const result=await response.json() as Array<{result?:number}>;const count=Number(result[0]?.result);return{allowed:Number.isFinite(count)&&count<=limit,retryAfterSeconds:Math.ceil(windowMs/1000)}}catch{return{allowed:false,retryAfterSeconds:Math.ceil(windowMs/1000)}}}};
-}
+import { createHash } from "node:crypto";
+export type RateLimitResult={allowed:boolean;retryAfterSeconds:number}; export interface RateLimiter{consume(key:string):Promise<RateLimitResult>}
+export function createDistributedRateLimiter(limit:number,windowMs:number,options:{fetch?:typeof fetch;now?:()=>number}={}):RateLimiter{const url=process.env.RATE_LIMIT_REST_URL?.replace(/\/$/,"");const token=process.env.RATE_LIMIT_REST_TOKEN;const fallback=Math.max(1,Math.ceil(windowMs/1000));if(!url||!token)return{async consume(){return{allowed:false,retryAfterSeconds:fallback}}};return{async consume(key){const now=options.now?.()??Date.now();const remaining=Math.max(1,Math.ceil((windowMs-(now%windowMs))/1000));const digest=createHash("sha256").update(key).digest("hex").slice(0,32);const bucket=`httpmaker:${process.env.VERCEL_ENV??"production"}:${Math.floor(now/windowMs)}:${digest}`;try{const response=await(options.fetch??fetch)(`${url}/pipeline`,{method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify([["INCR",bucket],["PEXPIRE",bucket,String(windowMs),"NX"]]),cache:"no-store",signal:AbortSignal.timeout(2_000)});if(!response.ok)throw new Error();const result=await response.json() as Array<{result?:unknown;error?:unknown}>;if(!Array.isArray(result)||result.some(item=>item.error)||result.length<2)throw new Error();const count=Number(result[0]?.result);if(!Number.isInteger(count)||count<1)throw new Error();return{allowed:count<=limit,retryAfterSeconds:count<=limit?0:remaining}}catch{return{allowed:false,retryAfterSeconds:remaining}}}}}
 export const createConfiguredRateLimiter=(limit:number,windowMs:number)=>process.env.NODE_ENV==="production"?createDistributedRateLimiter(limit,windowMs):createMemoryRateLimiter(limit,windowMs);
-
-/** Local/dev limiter only. Serverless instances do not share this state; replace it with a distributed adapter in production. */
-export function createMemoryRateLimiter(limit: number, windowMs: number): RateLimiter {
-  const buckets = new Map<string, number[]>();
-  return {
-    async consume(key) {
-      try {
-        const now = Date.now();
-        const recent = (buckets.get(key) ?? []).filter((time) => time > now - windowMs);
-        if (recent.length >= limit) return { allowed: false, retryAfterSeconds: Math.max(1, Math.ceil((recent[0] + windowMs - now) / 1000)) };
-        recent.push(now);
-        buckets.set(key, recent);
-        return { allowed: true, retryAfterSeconds: 0 };
-      } catch {
-        return { allowed: false, retryAfterSeconds: Math.ceil(windowMs / 1000) };
-      }
-    },
-  };
-}
-
-export const aiRateLimiter = createConfiguredRateLimiter(20, 60_000);
-export const externalUrlRateLimiter = createConfiguredRateLimiter(30, 60_000);
-export const assetUploadRateLimiter=createConfiguredRateLimiter(20,60_000);
-export const projectCreateRateLimiter=createConfiguredRateLimiter(10,60_000);
-export const publishRateLimiter=createConfiguredRateLimiter(20,60_000);
-export const githubRateLimiter=createConfiguredRateLimiter(30,60_000);
-export const rateLimitResponse=(retryAfterSeconds:number)=>Response.json({error:{code:"RATE_LIMITED",message:"Too many requests. Try again shortly."}},{status:429,headers:{"Retry-After":String(retryAfterSeconds),"Cache-Control":"private, no-store"}});
+export function createMemoryRateLimiter(limit:number,windowMs:number):RateLimiter{const buckets=new Map<string,number[]>();return{async consume(key){const now=Date.now();const recent=(buckets.get(key)??[]).filter(time=>time>now-windowMs);if(recent.length>=limit)return{allowed:false,retryAfterSeconds:Math.max(1,Math.ceil((recent[0]+windowMs-now)/1000))};recent.push(now);buckets.set(key,recent);return{allowed:true,retryAfterSeconds:0}}}}
+export const aiRateLimiter=createConfiguredRateLimiter(20,60_000);export const externalUrlRateLimiter=createConfiguredRateLimiter(30,60_000);export const assetUploadRateLimiter=createConfiguredRateLimiter(20,60_000);export const projectCreateRateLimiter=createConfiguredRateLimiter(10,60_000);export const publishRateLimiter=createConfiguredRateLimiter(20,60_000);export const githubRateLimiter=createConfiguredRateLimiter(30,60_000);export const rateLimitResponse=(seconds:number)=>Response.json({error:{code:"RATE_LIMITED",message:"Too many requests. Try again shortly."}},{status:429,headers:{"Retry-After":String(Math.max(1,Math.min(seconds,86400))),"Cache-Control":"private, no-store"}});

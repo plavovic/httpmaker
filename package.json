@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "vercel-build": "npm run prisma:generate && next build",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "verify:deploy": "npm run prisma:generate && prisma validate && npm run lint && npm run typecheck && npm test && npm run build",
     "prisma:generate": "prisma generate",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
