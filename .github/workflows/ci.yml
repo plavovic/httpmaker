@@ -60,8 +60,8 @@ jobs:
           AUTH_GOOGLE_ID: ci-google-id
           AUTH_GOOGLE_SECRET: ci-google-secret
           BLOB_READ_WRITE_TOKEN: vercel_blob_rw_ci_00000000000000000000000000000000
-          RATE_LIMIT_REST_URL: https://rate-limit.invalid
-          RATE_LIMIT_REST_TOKEN: ci-rate-limit-token
+          KV_REST_API_URL: https://ci-rate-limit.internal
+          KV_REST_API_TOKEN: ci-generated-test-rate-limit-token
       - run: npx playwright install --with-deps chromium
       - run: npm run test:security:browser
       - run: npm audit --omit=dev --audit-level=high

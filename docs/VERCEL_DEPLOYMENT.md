@@ -24,12 +24,18 @@ disabled and must never silently callback to production.
 | `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET` | Required pair | Secret | Runtime; GitHub OAuth |
 | `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | Required pair | Secret | Runtime; Google OAuth |
 | `BLOB_READ_WRITE_TOKEN` | Required | Secret | Runtime; Vercel Blob |
-| `RATE_LIMIT_REST_URL`, `RATE_LIMIT_REST_TOKEN` | Required pair | Secret | Runtime; Redis REST |
+| `RATE_LIMIT_REST_URL`, `RATE_LIMIT_REST_TOKEN` | Preferred explicit pair | Secret | Runtime; Redis REST |
+| `KV_REST_API_URL`, `KV_REST_API_TOKEN` | Accepted Vercel-managed alternative | Secret | Runtime; connected KV/Redis integration |
 | `GITHUB_APP_ID`, `GITHUB_APP_SLUG`, `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_STATE_SECRET`, `GITHUB_APP_WEBHOOK_SECRET` | Optional complete group | Secret except slug/id | Runtime; GitHub App |
 
 Generate `AUTH_SECRET` locally with `openssl rand -base64 32` and paste only into
 Vercel's encrypted environment settings. Preserve private-key newlines in
 `GITHUB_APP_PRIVATE_KEY`; do not use `GITHUB_APP_PRIVATE_KEY_PATH` on Vercel.
+
+Rate limiting accepts either complete naming pair. The explicit
+`RATE_LIMIT_REST_*` pair takes precedence. Vercel-managed `KV_REST_API_*`
+variables work directly and need no manual aliases. Never configure or use
+`KV_REST_API_READ_ONLY_TOKEN` for the atomic increment/expiry operation.
 
 Configure callbacks at
 `https://YOUR_DOMAIN/api/auth/callback/github`,
