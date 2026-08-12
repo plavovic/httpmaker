@@ -3,8 +3,19 @@ import './globals.css';
 import { SmoothScroll } from '@/components/SmoothScroll';
 
 export const metadata: Metadata = {
-  title: 'Httpmaker Studio',
-  description: 'A premium cinematic landing page built with Next.js and GSAP.',
+  title: 'HTTPMAKER',
+  description: 'HTTPMAKER - Generate your website.',
+  applicationName: 'HTTPMAKER',
+  openGraph: {
+    title: 'HTTPMAKER',
+    description: 'HTTPMAKER - Generate your website.',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'HTTPMAKER',
+    description: 'HTTPMAKER - Generate your website.',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
