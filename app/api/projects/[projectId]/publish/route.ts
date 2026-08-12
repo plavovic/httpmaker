@@ -18,7 +18,7 @@ export async function GET(_request: Request, context: Context) {
   if (!project) return apiError("PROJECT_NOT_FOUND", "Project not found.", 404);
   const parsed = safelyParseWebsiteData(project.website);
   const unresolvedAssetCount = parsed.success ? findLegacyAssetReferences(parsed.data).length : 0;
-  return Response.json({ project: { id: project.id, name: project.name, slug: project.slug, isPublished: project.isPublished, updatedAt: project.updatedAt, publishedAt: project.publishedAt, draftRevision: project.draftRevision, publishedRevision: project.publishedRevision, publicationTitle: project.publicationTitle, publicationIconUrl: project.publicationIconUrl }, preflight: { draftValid: parsed.success, unresolvedAssetCount } });
+  return Response.json({ project: { id: project.id, name: project.name, slug: project.slug, isPublished: project.isPublished, updatedAt: project.updatedAt, publishedAt: project.publishedAt, draftRevision: project.draftRevision, publishedRevision: project.publishedRevision, publicationTitle: project.publicationTitle, publicationIconUrl: project.publicationIconUrl, publicationIconData: project.publicationIconData }, preflight: { draftValid: parsed.success, unresolvedAssetCount } });
 }
 
 export async function POST(request: Request, context: Context) {
@@ -26,7 +26,7 @@ export async function POST(request: Request, context: Context) {
   if (!ownerId) return apiError("UNAUTHENTICATED", "Sign in to publish.", 401);
   const { projectId } = await context.params;
   let body: unknown = {};
-  if (request.headers.get("content-length") !== "0") try { body = await readJsonBody(request, 8_000); } catch (error) { return error instanceof RequestBodyTooLargeError ? apiError("BODY_TOO_LARGE", "The request body is too large.", 413) : apiError("INVALID_JSON", "The request body must be valid JSON.", 400); }
+  if (request.headers.get("content-length") !== "0") try { body = await readJsonBody(request, 800_000); } catch (error) { return error instanceof RequestBodyTooLargeError ? apiError("BODY_TOO_LARGE", "The request body is too large.", 413) : apiError("INVALID_JSON", "The request body must be valid JSON.", 400); }
   const input = publishRequestSchema.safeParse(body);
   if (!input.success) return apiError("INVALID_PUBLICATION", "Invalid publication settings.", 400, input.error.flatten());
   const preflight = await prepareProjectPublication(projectId, ownerId, input.data.slug);
@@ -40,7 +40,7 @@ export async function POST(request: Request, context: Context) {
     if (!icon || !["image/png", "image/jpeg", "image/webp", "image/gif"].includes(icon.mimeType)) return apiError("INVALID_PUBLICATION_ICON", "Choose an icon uploaded to this project.", 400);
   }
   try {
-    const publication = await publishProject(projectId, ownerId, preflight.slug, preflight.website, preflight.project.draftRevision, { title: input.data.title, iconUrl: input.data.iconUrl });
+    const publication = await publishProject(projectId, ownerId, preflight.slug, preflight.website, preflight.project.draftRevision, { title: input.data.title, iconUrl: input.data.iconUrl, iconData: input.data.iconData });
     if (!publication) return apiError("DRAFT_CONFLICT", "The draft changed while publishing. Reload and try again.", 409);
     return Response.json({ publication: { ...publication, path: `/${publication.slug}` } });
   } catch (error) {

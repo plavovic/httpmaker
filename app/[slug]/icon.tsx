@@ -8,6 +8,10 @@ export const contentType = "image/png";
 export default async function PublishedSiteIcon({ params }: { params: Promise<{ slug: string }> }) {
   const data = await loadPublishedSite((await params).slug);
   if (!data) notFound();
+  if (data.project.publicationIconData) {
+    const match=data.project.publicationIconData.match(/^data:(image\/(?:png|jpeg|webp|gif));base64,(.+)$/);
+    if(match)return new Response(Buffer.from(match[2],"base64"),{headers:{"Content-Type":match[1],"Cache-Control":"public, max-age=3600, must-revalidate"}});
+  }
   if (data.project.publicationIconUrl) {
     try {
       const icon = await fetch(data.project.publicationIconUrl, { cache: "no-store" });

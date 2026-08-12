@@ -12,4 +12,5 @@ export function slugify(value: string) {
 }
 
 export const publicationTitleSchema = z.string().trim().min(1, "Enter a website title.").max(120, "The website title must be 120 characters or fewer.");
-export const publishRequestSchema = z.object({ slug: slugSchema.optional(), expectedRevision: z.number().int().nonnegative().optional(), title: publicationTitleSchema, iconUrl: z.string().url().max(2_000).nullable() }).strict();
+export const publicationIconDataSchema = z.string().max(750_000).regex(/^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/, "Invalid website icon.").nullable();
+export const publishRequestSchema = z.object({ slug: slugSchema.optional(), expectedRevision: z.number().int().nonnegative().optional(), title: publicationTitleSchema, iconUrl: z.string().url().max(2_000).nullable(), iconData: publicationIconDataSchema }).strict();

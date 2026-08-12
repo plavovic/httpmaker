@@ -125,13 +125,13 @@ export class SlugConflictError extends Error {}
 export const setProjectDeletionState = (projectId: string, ownerId: string, deletionState: string, deletionError: string | null = null) =>
   prisma.project.updateMany({ where: { id: projectId, ownerId }, data: { deletionState, deletionError } });
 
-export const findPublishedProjectBySlug = (slug: string) => prisma.project.findFirst({ where: { slug, isPublished: true, publishedWebsite: { not: Prisma.DbNull } }, select: { name: true, slug: true, publishedWebsite: true, publishedAt: true, publicationTitle: true, publicationIconUrl: true } });
+export const findPublishedProjectBySlug = (slug: string) => prisma.project.findFirst({ where: { slug, isPublished: true, publishedWebsite: { not: Prisma.DbNull } }, select: { name: true, slug: true, publishedWebsite: true, publishedAt: true, publicationTitle: true, publicationIconUrl: true, publicationIconData: true } });
 
-export async function publishProject(projectId: string, ownerId: string, slug: string, website: unknown, revision: number, branding: { title: string; iconUrl: string | null }) {
+export async function publishProject(projectId: string, ownerId: string, slug: string, website: unknown, revision: number, branding: { title: string; iconUrl: string | null; iconData: string | null }) {
   return prisma.$transaction(async (tx) => {
     const claimed = await tx.project.findFirst({ where: { slug, NOT: { id: projectId } }, select: { id: true } });
     if (claimed) throw new SlugConflictError("Slug conflict");
-    const updated = await tx.project.updateMany({ where: { id: projectId, ownerId, draftRevision: revision, deletionState: "active" }, data: { slug, publicationTitle: branding.title, publicationIconUrl: branding.iconUrl, publishedWebsite: toPrismaJson(website), publishedRevision: revision, isPublished: true, publishedAt: new Date() } });
+    const updated = await tx.project.updateMany({ where: { id: projectId, ownerId, draftRevision: revision, deletionState: "active" }, data: { slug, publicationTitle: branding.title, publicationIconUrl: branding.iconUrl, publicationIconData: branding.iconData, publishedWebsite: toPrismaJson(website), publishedRevision: revision, isPublished: true, publishedAt: new Date() } });
     if (!updated.count) return null;
     return tx.project.findFirst({ where: { id: projectId, ownerId }, select: { slug: true, isPublished: true, publishedAt: true, publishedRevision: true } });
   });
