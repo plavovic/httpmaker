@@ -28,11 +28,12 @@ import DesignPresetPreview from "@/components/editor/presets/DesignPresetPreview
 import { readApiResponse } from "@/lib/api-response";
 import type { DesignPresetId } from "@/types/designPreset";
 import { upload } from "@vercel/blob/client";
+import DesktopEditorGate from "@/components/editor/DesktopEditorGate";
 
 type PendingProposal = { proposal: AiPatchProposal; previewWebsite: WebsiteJSON; mode: AiMode; selectedSectionId?: string };
 const modeForPrompt = (message: string): AiMode => /\b(add|insert|create)\b.*\b(section|hero|navbar|about|carousel|features|contact|footer)\b/i.test(message) ? "add-section" : /\b(restyle|theme|palette|colors?|dark|light|design)\b/i.test(message) ? "restyle-website" : /\b(rewrite|copy|content)\b/i.test(message) ? "rewrite-content" : "edit-selected-section";
 
-export default function EditorPage() {
+function EditorWorkspace() {
   const { website: websiteJSON, setWebsite: setWebsiteJSON, replaceWebsite, undo, redo, canUndo, canRedo, undoLabel, redoLabel } = useWebsiteHistory(initialWebsite);
   const [selection, setSelection] = useState<EditorSelection>({ sectionId: initialWebsite.sections[1].id });
   const [viewMode, setViewMode] = useState<ViewMode>("preview");
@@ -402,4 +403,8 @@ const migrateLegacyAssets=async()=>{if(!activeProjectId||!ownerId||!legacyRefere
       <AssetLibrary assets={assets} open={assetLibraryOpen} hasTarget={Boolean(assetTarget)} busy={assetBusy} error={assetError} onClose={()=>setAssetLibraryOpen(false)} onFiles={files=>void uploadFiles(files)} onSelect={chooseAsset} onSetBackground={setAssetAsBackground} onDelete={id=>void removeAsset(id)}/>
     </main>
   );
+}
+
+export default function EditorPage() {
+  return <DesktopEditorGate><EditorWorkspace /></DesktopEditorGate>;
 }
