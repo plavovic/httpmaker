@@ -305,6 +305,19 @@ export default function EditorPage() {
     window.open(activeProjectId?`/preview/${encodeURIComponent(activeProjectId)}`:"/preview", "_blank", "noopener,noreferrer");
   };
 
+  const openPublishing = async () => {
+    if (!activeProjectId) return;
+    window.clearTimeout(saveTimerRef.current);
+    setSaveState("Saving…");
+    try {
+      await persistDraft(activeProjectId);
+      window.location.assign(`/dashboard/projects/${encodeURIComponent(activeProjectId)}/publish`);
+    } catch (reason) {
+      setSaveState(reason instanceof Error && "conflict" in reason ? "Save conflicted" : "Save failed");
+      setAssetError("Publishing was not opened because the latest draft could not be saved. Resolve the save error and retry.");
+    }
+  };
+
   const handleSend = async (event: FormEvent) => {
     event.preventDefault();
     const message = prompt.trim();
@@ -362,7 +375,7 @@ export default function EditorPage() {
 
   return (
     <main data-theme={isLightStudioTheme(colorMode) ? "light" : "dark"} data-color-theme={colorMode} className="ide-shell studio-shell flex h-screen min-h-0 flex-col overflow-hidden">
-      <EditorToolbar profileImage={profileImage} profileName={profileName} projectName={projectName} saveState={saveState} colorMode={colorMode} onColorModeChange={setColorMode} viewMode={viewMode} onViewModeChange={setViewMode} onOpenPreview={openPreview} onExport={()=>void exportWebsiteZip(resolveWebsiteAssetReferences(websiteJSON,assets))} editorTab={editorTab} onEditorTabChange={setEditorTab} device={device} onDeviceChange={setDevice} canUndo={canUndo} canRedo={canRedo} undoLabel={undoLabel} redoLabel={redoLabel} onUndo={undo} onRedo={redo} />
+      <EditorToolbar profileImage={profileImage} profileName={profileName} projectName={projectName} saveState={saveState} colorMode={colorMode} onColorModeChange={setColorMode} viewMode={viewMode} onViewModeChange={setViewMode} onOpenPreview={openPreview} onPublish={()=>void openPublishing()} publishAvailable={Boolean(activeProjectId)} onExport={()=>void exportWebsiteZip(resolveWebsiteAssetReferences(websiteJSON,assets))} editorTab={editorTab} onEditorTabChange={setEditorTab} device={device} onDeviceChange={setDevice} canUndo={canUndo} canRedo={canRedo} undoLabel={undoLabel} redoLabel={redoLabel} onUndo={undo} onRedo={redo} />
       <div className="studio-body flex min-h-0 flex-1">
         <EditorSidebar messages={messages} history={history} isProcessing={isProcessing} prompt={prompt} onPromptChange={setPrompt} autoMode={autoMode} onToggleAutoMode={() => setAutoMode((value) => !value)} onSubmit={handleSend} proposal={pendingProposal?.proposal ?? null} onApplyProposal={applyProposal} onDiscardProposal={discardProposal} />
         <section className="ide-workspace flex-1 min-h-0 overflow-hidden">

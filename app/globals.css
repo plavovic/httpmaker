@@ -73,7 +73,7 @@ body.website-preview-document > .site-renderer,
 ::-webkit-scrollbar-thumb { background: var(--vscode-border); }
 ::-webkit-scrollbar-thumb:hover { background: #31556f; }
 
-.ide-shell { background: var(--vscode-bg) !important; color: var(--vscode-text) !important; padding-bottom: 23px; }
+.ide-shell { background: var(--vscode-bg) !important; color: var(--vscode-text) !important; padding-bottom: 0; }
 .activity-bar { display: none; width: 48px; flex: 0 0 48px; background: #000f1a; border-right: 1px solid var(--vscode-border); padding: 7px 0 24px; flex-direction: column; align-items: stretch; z-index: 10; }
 .activity-brand { margin: 2px auto 9px; display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid var(--vscode-cyan); color: var(--vscode-cyan); font-size: 14px; font-weight: 800; }
 .activity-item { position: relative; display: grid; place-items: center; height: 48px; border: 0; background: transparent; color: var(--vscode-text-muted); font: 24px/1 Consolas, monospace; transition: 140ms ease; }

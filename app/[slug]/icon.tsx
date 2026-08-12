@@ -8,7 +8,15 @@ export const contentType = "image/png";
 export default async function PublishedSiteIcon({ params }: { params: Promise<{ slug: string }> }) {
   const data = await loadPublishedSite((await params).slug);
   if (!data) notFound();
-  if (data.project.publicationIconUrl) return Response.redirect(data.project.publicationIconUrl, 307);
+  if (data.project.publicationIconUrl) {
+    try {
+      const icon = await fetch(data.project.publicationIconUrl, { cache: "no-store" });
+      const type = icon.headers.get("content-type")?.split(";")[0] ?? "";
+      if (icon.ok && ["image/png", "image/jpeg", "image/webp", "image/gif"].includes(type)) return new Response(await icon.arrayBuffer(), { headers: { "Content-Type": type, "Cache-Control": "public, max-age=3600, must-revalidate" } });
+    } catch {
+      // Fall through to a generated icon when remote asset delivery is unavailable.
+    }
+  }
   const navbar = data.website.sections.find((section) => section.type === "navbar");
   const hero = data.website.sections.find((section) => section.type === "hero");
   const name = data.project.publicationTitle?.trim() || navbar?.props.title.trim() || hero?.props.title.trim() || data.project.name || "Website";

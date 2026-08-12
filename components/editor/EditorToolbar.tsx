@@ -4,7 +4,7 @@ import type { ColorMode, ViewMode } from "@/types/website";
 
 export type EditorTab = "ai" | "layers" | "design" | "theme" | "properties";
 export type DeviceMode = "desktop" | "tablet" | "mobile";
-type Props = { profileImage: string | null; profileName: string; projectName: string; saveState: string; colorMode: ColorMode; onColorModeChange: (mode: ColorMode) => void; viewMode: ViewMode; onViewModeChange: (mode: ViewMode) => void; onOpenPreview: () => void; onExport:()=>void; editorTab: EditorTab; onEditorTabChange: (tab: EditorTab) => void; device: DeviceMode; onDeviceChange: (device: DeviceMode) => void; canUndo: boolean; canRedo: boolean; undoLabel?: string; redoLabel?: string; onUndo: () => void; onRedo: () => void };
+type Props = { profileImage: string | null; profileName: string; projectName: string; saveState: string; colorMode: ColorMode; onColorModeChange: (mode: ColorMode) => void; viewMode: ViewMode; onViewModeChange: (mode: ViewMode) => void; onOpenPreview: () => void; onPublish: () => void; publishAvailable: boolean; onExport:()=>void; editorTab: EditorTab; onEditorTabChange: (tab: EditorTab) => void; device: DeviceMode; onDeviceChange: (device: DeviceMode) => void; canUndo: boolean; canRedo: boolean; undoLabel?: string; redoLabel?: string; onUndo: () => void; onRedo: () => void };
 
 export default function EditorToolbar(props: Props) {
   return <header className="studio-toolbar">
@@ -16,7 +16,7 @@ export default function EditorToolbar(props: Props) {
       <div className="studio-view-switch">{(["preview", "edit", "dashboard"] as ViewMode[]).map((mode) => <button type="button" key={mode} onClick={() => props.onViewModeChange(mode)} className={props.viewMode === mode ? "selected" : ""}>{mode}</button>)}</div>
       <button type="button" className="studio-preview-button" onClick={props.onOpenPreview} title="Open full preview">↗</button>
       <button type="button" className="studio-export-button" onClick={props.onExport} title="Download visitor website ZIP">ZIP</button>
-      <button type="button" className="studio-publish-button"><span>Publish</span></button>
+      <button type="button" className="studio-publish-button" onClick={props.onPublish} disabled={!props.publishAvailable} title={props.publishAvailable?"Open publishing details":"Save this project before publishing"}><span>Publish</span></button>
     </div>
   </header>;
 }
