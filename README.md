@@ -10,11 +10,11 @@ snapshots, static ZIP/GitHub export, and a deterministic mock AI proposal flow.
 2. Create or open an owned project.
 3. Edit the database-backed draft and upload images.
 4. Preview the latest confirmed draft at `/preview/[projectId]`.
-5. Publish a validated snapshot to `/sites/[slug]`.
+5. Open the dedicated publishing-details page and publish a validated snapshot to `/[slug]`.
 6. Continue editing without changing the live snapshot, then republish or
    unpublish explicitly.
 
-Only `/sites/[slug]` is a public project-content read. Project, preview, asset,
+Only `/[slug]` (plus the validating `/sites/[slug]` compatibility redirect) is a public project-content read. Project, preview, asset,
 AI, Maps, publication, and GitHub management routes require an authenticated
 user and derive ownership from `session.user.id`.
 
@@ -111,7 +111,11 @@ npx prisma migrate deploy
 `Project.website` is the mutable draft. `publishedWebsite` is a separately
 serialized validated snapshot. `slug` is nullable and globally unique;
 `isPublished` controls public visibility, and `publishedAt` records the most
-recent successful publication.
+recent successful publication. New projects also have an explicit one-time
+`initialPresetId` / `editorSetupCompletedAt` onboarding state. The migration
+grandfathers every existing project without changing its WebsiteJSON, recovering
+a known preset ID where possible. Deploy with `npm run prisma:generate` followed
+by `npx prisma migrate deploy`.
 
 ## Image assets
 
@@ -144,7 +148,10 @@ Draft preview flushes and awaits the latest save and refuses to open on failure.
 
 - `/preview` is the labeled legacy browser-storage preview.
 - `/preview/[projectId]` is authenticated and renders the owned database draft.
-- `/sites/[slug]` is public and renders only a valid published snapshot.
+- `/[slug]` is public and renders only a valid published snapshot.
+- `/sites/[slug]` permanently redirects to the root URL only for an existing live publication.
+- `/dashboard/projects/[projectId]/publish` is the owner-only publishing page with
+  slug availability, preflight, snapshot status, URL changes, copy, and unpublish controls.
 - `POST /api/projects/[projectId]/publish` validates the current database draft,
   slug and unresolved assets before atomically replacing the snapshot.
 - `DELETE /api/projects/[projectId]/publish` hides the public site while retaining
@@ -207,9 +214,13 @@ npm run dev
 2. Reload and confirm the draft and HTTPS image persisted.
 3. Migrate a legacy local image and confirm its IndexedDB copy remains.
 4. Preview the latest confirmed database draft.
-5. Publish and open `/sites/[slug]` signed out.
-6. Edit the draft and confirm the live snapshot is unchanged.
-7. Republish, then unpublish and confirm the public route returns not found.
+5. Create a project, choose and persist a required starting preset, reload, and
+   confirm the normal editor opens and its Design panel can change the preset later.
+6. Open the publishing-details page, publish, and open `/[slug]` signed out;
+   confirm `/sites/[slug]` redirects there.
+7. Edit the draft and confirm the live snapshot is unchanged.
+8. Republish, change the slug with confirmation, then unpublish and confirm both
+   root and legacy routes return not found.
 8. Confirm User B cannot access User A's private project, preview, assets,
    publication endpoints, installations, or repositories.
 9. User A connects a GitHub App installation, selects a repository, confirms a

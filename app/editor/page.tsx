@@ -23,6 +23,10 @@ import { safelyParseWebsiteData } from "@/schemas/website.schema";
 import { findLegacyAssetReferences } from "@/features/publishing/assets";
 import { createAutosaveCoordinator } from "@/utils/autosaveCoordinator";
 import HttpmakerLoadingScreen from "@/components/HttpmakerLoadingScreen";
+import { designPresetList } from "@/presets";
+import DesignPresetPreview from "@/components/editor/presets/DesignPresetPreview";
+import { readApiResponse } from "@/lib/api-response";
+import type { DesignPresetId } from "@/types/designPreset";
 
 type PendingProposal = { proposal: AiPatchProposal; previewWebsite: WebsiteJSON; mode: AiMode; selectedSectionId?: string };
 const modeForPrompt = (message: string): AiMode => /\b(add|insert|create)\b.*\b(section|hero|navbar|about|carousel|features|contact|footer)\b/i.test(message) ? "add-section" : /\b(restyle|theme|palette|colors?|dark|light|design)\b/i.test(message) ? "restyle-website" : /\b(rewrite|copy|content)\b/i.test(message) ? "rewrite-content" : "edit-selected-section";
@@ -54,6 +58,11 @@ export default function EditorPage() {
   const [assetError,setAssetError]=useState("");
   const [retrySave,setRetrySave]=useState(0);
   const [migrationProgress,setMigrationProgress]=useState("");
+  const [setupRequired,setSetupRequired]=useState(false);
+  const [setupProjectId,setSetupProjectId]=useState<string|null>(null);
+  const [selectedPreset,setSelectedPreset]=useState<DesignPresetId|null>(null);
+  const [setupBusy,setSetupBusy]=useState(false);
+  const [setupError,setSetupError]=useState("");
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const aiRequestRef = useRef<AbortController | null>(null);
   const autosaveCoordinatorRef = useRef(createAutosaveCoordinator());
@@ -71,15 +80,16 @@ export default function EditorPage() {
         try {
           const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}`);
           if (response.status === 401) { window.location.assign("/login"); return; }
-          const body = await response.json();
-          if (!response.ok) throw new Error(body.error ?? "Unable to load project.");
+          const body = await readApiResponse<{project:{website:unknown;name:string;draftRevision:number;editorSetupCompletedAt:string|null}}>(response);
+          if (!body) throw new Error("Unable to load project.");
           const websiteResult = safelyParseWebsiteData(body.project.website);
           if (!websiteResult.success) throw new Error("The saved project contains invalid website data.");
           if (!cancelled) {
-            replaceWebsite(websiteResult.data);
-            setActiveProjectId(projectId);
+            setSetupProjectId(projectId);
             setProjectName(body.project.name);
             serverRevisionRef.current = body.project.draftRevision;
+            if (body.project.editorSetupCompletedAt) { replaceWebsite(websiteResult.data); setActiveProjectId(projectId); }
+            else setSetupRequired(true);
           }
         } catch (reason) {
           if (!cancelled) setAssetError(reason instanceof Error ? reason.message : "Unable to load project.");
@@ -344,7 +354,11 @@ export default function EditorPage() {
   const displayedWebsite = useMemo(()=>resolveWebsiteAssetReferences(pendingProposal?.previewWebsite ?? websiteJSON,assets),[assets,pendingProposal,websiteJSON]);
   const websiteLocked = isProcessing || Boolean(pendingProposal);
 
+  const confirmInitialPreset=async()=>{if(!selectedPreset||!setupProjectId||setupBusy)return;setSetupBusy(true);setSetupError("");try{const body=await readApiResponse<{project:{website:unknown;draftRevision:number;editorSetupCompletedAt:string|null}}>(await fetch(`/api/projects/${encodeURIComponent(setupProjectId)}/initialize`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({presetId:selectedPreset})}));const parsed=safelyParseWebsiteData(body?.project.website);if(!body||!parsed.success||!body.project.editorSetupCompletedAt)throw new Error("The saved preset could not be opened.");replaceWebsite(parsed.data);serverRevisionRef.current=body.project.draftRevision;setActiveProjectId(setupProjectId);setSetupRequired(false)}catch(reason){setSetupError(reason instanceof Error?reason.message:"Unable to save this preset. Please retry.")}finally{setSetupBusy(false)}};
+
   if (!storageReady) return <HttpmakerLoadingScreen label="Opening your studio" />;
+
+  if(setupRequired)return <main className="preset-onboarding"><div className="preset-onboarding-header"><a href="/dashboard">← Back to dashboard</a><strong>{'{'}HTTPMAKER</strong></div><section><p className="preset-onboarding-kicker">New project setup</p><h1>Choose your starting design</h1><p className="preset-onboarding-copy">Select the preset that should create the first version of your website. You can change the design later from the Design panel in the editor.</p><div className="preset-onboarding-grid" role="radiogroup" aria-label="Starting design preset">{designPresetList.map(preset=><button type="button" role="radio" aria-checked={selectedPreset===preset.id} className={selectedPreset===preset.id?"selected":""} key={preset.id} onClick={()=>setSelectedPreset(preset.id)}><DesignPresetPreview preset={preset}/><span><b>{preset.name}</b><small>{preset.description}</small></span><i>{selectedPreset===preset.id?"Selected":"Select"}</i></button>)}</div>{setupError&&<p role="alert" className="preset-onboarding-error">{setupError}</p>}<button type="button" className="preset-onboarding-confirm" disabled={!selectedPreset||setupBusy} onClick={()=>void confirmInitialPreset()}>{setupBusy?"Saving your design…":"Start with this preset"}</button></section></main>;
 
   return (
     <main data-theme={isLightStudioTheme(colorMode) ? "light" : "dark"} data-color-theme={colorMode} className="ide-shell studio-shell flex h-screen min-h-0 flex-col overflow-hidden">

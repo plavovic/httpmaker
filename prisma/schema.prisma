@@ -80,6 +80,9 @@ model Project {
   slug             String? @unique
   publishedWebsite Json?
   draftRevision    Int    @default(0)
+  publishedRevision Int?
+  initialPresetId String?
+  editorSetupCompletedAt DateTime?
   deletionState   String @default("active")
   deletionError   String?
 

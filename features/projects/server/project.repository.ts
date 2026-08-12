@@ -10,6 +10,8 @@ import type {
   UpdateProjectInput,
 } from "../schemas/project.schema";
 import { slugify } from "@/features/publishing/slug";
+import { presetWebsites } from "@/presets/templates";
+import type { DesignPresetId } from "@/types/designPreset";
 
 function toPrismaJson(
   value: unknown,
@@ -75,6 +77,8 @@ export async function createProject(
       ownerId,
       website: toPrismaJson(initialWebsite),
       slug,
+      initialPresetId: null,
+      editorSetupCompletedAt: null,
     },
   });
 }
@@ -116,18 +120,39 @@ export async function deleteProject(
     },
   });
 }
+export class SlugConflictError extends Error {}
 
 export const setProjectDeletionState = (projectId: string, ownerId: string, deletionState: string, deletionError: string | null = null) =>
   prisma.project.updateMany({ where: { id: projectId, ownerId }, data: { deletionState, deletionError } });
 
 export const findPublishedProjectBySlug = (slug: string) => prisma.project.findFirst({ where: { slug, isPublished: true, publishedWebsite: { not: Prisma.DbNull } }, select: { name: true, slug: true, publishedWebsite: true, publishedAt: true } });
 
-export async function publishProject(projectId: string, ownerId: string, slug: string, website: unknown) {
-  return prisma.project.update({ where: { id: projectId, ownerId }, data: { slug, publishedWebsite: toPrismaJson(website), isPublished: true, publishedAt: new Date() }, select: { slug: true, isPublished: true, publishedAt: true } });
+export async function publishProject(projectId: string, ownerId: string, slug: string, website: unknown, revision: number) {
+  return prisma.$transaction(async (tx) => {
+    const claimed = await tx.project.findFirst({ where: { slug, NOT: { id: projectId } }, select: { id: true } });
+    if (claimed) throw new SlugConflictError("Slug conflict");
+    const updated = await tx.project.updateMany({ where: { id: projectId, ownerId, draftRevision: revision, deletionState: "active" }, data: { slug, publishedWebsite: toPrismaJson(website), publishedRevision: revision, isPublished: true, publishedAt: new Date() } });
+    if (!updated.count) return null;
+    return tx.project.findFirst({ where: { id: projectId, ownerId }, select: { slug: true, isPublished: true, publishedAt: true, publishedRevision: true } });
+  });
 }
 
 export async function unpublishProject(projectId: string, ownerId: string) {
   return prisma.project.updateMany({ where: { id: projectId, ownerId }, data: { isPublished: false } });
+}
+
+export const isSlugAvailable = async (slug: string, projectId: string) => !(await prisma.project.findFirst({ where: { slug, NOT: { id: projectId } }, select: { id: true } }));
+
+export async function initializeProjectPreset(projectId: string, ownerId: string, presetId: DesignPresetId) {
+  const website = structuredClone(presetWebsites[presetId]);
+  return prisma.$transaction(async (tx) => {
+    const current = await tx.project.findFirst({ where: { id: projectId, ownerId, deletionState: "active" } });
+    if (!current) return { kind: "not_found" as const };
+    if (current.editorSetupCompletedAt) return { kind: "complete" as const, project: current };
+    const result = await tx.project.updateMany({ where: { id: projectId, ownerId, editorSetupCompletedAt: null, draftRevision: current.draftRevision }, data: { website: toPrismaJson(website), initialPresetId: presetId, editorSetupCompletedAt: new Date(), draftRevision: { increment: 1 } } });
+    const project = await tx.project.findFirst({ where: { id: projectId, ownerId } });
+    return result.count ? { kind: "initialized" as const, project } : { kind: "complete" as const, project };
+  });
 }
 
 export async function linkProjectRepository(projectId: string, ownerId: string, input: { installationId: string; repositoryId: string; fullName: string; htmlUrl: string; defaultBranch: string }) {

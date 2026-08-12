@@ -202,42 +202,6 @@ export default function DashboardClient({ user, initialProjects, githubEnabled }
     }
   };
 
-  const publishDashboardProject = async (project: DashboardProject, requestedSlug?: string) => {
-    if (busyProjectId) return;
-    setBusyProjectId(project.id); setError(""); setNotice("");
-    try {
-      const response = await fetch(`/api/projects/${encodeURIComponent(project.id)}/publish`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestedSlug ? { slug: requestedSlug } : {}) });
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.error ?? "Unable to publish project.");
-      setProjects((current) => current.map((item) => item.id === project.id ? { ...item, slug: body.publication.slug, isPublished: true, publishedAt: body.publication.publishedAt } : item));
-      setNotice(`Published at ${body.publication.path}`);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to publish project."); }
-    finally { setBusyProjectId(null); }
-  };
-
-  const unpublishDashboardProject = async (project: DashboardProject) => {
-    if (busyProjectId || !window.confirm(`Unpublish “${project.name}”?`)) return;
-    setBusyProjectId(project.id);
-    try {
-      const response = await fetch(`/api/projects/${encodeURIComponent(project.id)}/publish`, { method: "DELETE" });
-      if (!response.ok) throw new Error((await response.json()).error ?? "Unable to unpublish project.");
-      setProjects((current) => current.map((item) => item.id === project.id ? { ...item, isPublished: false } : item));
-      setNotice("Website unpublished.");
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to unpublish project."); }
-    finally { setBusyProjectId(null); }
-  };
-
-  const editSlug = (project: DashboardProject) => {
-    const value = window.prompt("Public slug (lowercase letters, numbers, and hyphens)", project.slug ?? "");
-    if (value !== null) void publishDashboardProject(project, value.trim());
-  };
-
-  const copyPublicUrl = async (project: DashboardProject) => {
-    if (!project.slug) return;
-    await navigator.clipboard.writeText(`${window.location.origin}/sites/${project.slug}`);
-    setNotice("Public URL copied.");
-  };
-
   const openRepositoryDialog = async (project: DashboardProject) => {
     const installationId=project.githubInstallationId??installations.find(item=>item.status==="active")?.id;
     if(!installationId){setError("Connect a GitHub App installation first.");return}
@@ -391,11 +355,8 @@ export default function DashboardClient({ user, initialProjects, githubEnabled }
                   <summary>Options<span aria-hidden="true">⌄</span></summary>
                   <div>
                     <button type="button" onClick={()=>window.open(`/preview/${encodeURIComponent(project.id)}`,"_blank","noopener,noreferrer")}>Preview draft</button>
-                    <button type="button" disabled={busyProjectId===project.id} onClick={()=>void publishDashboardProject(project)}>{project.isPublished?(project.publishedAt&&new Date(project.updatedAt)>new Date(project.publishedAt)?"Republish changes":"Republish"):"Publish"}</button>
-                    {project.isPublished&&project.slug&&<a href={`/sites/${project.slug}`} target="_blank" rel="noreferrer">View live site</a>}
-                    {project.isPublished&&project.slug&&<button type="button" onClick={()=>void copyPublicUrl(project)}>Copy public URL</button>}
-                    <button type="button" onClick={()=>editSlug(project)}>Edit public slug</button>
-                    {project.isPublished&&<button type="button" disabled={busyProjectId===project.id} onClick={()=>void unpublishDashboardProject(project)}>Unpublish</button>}
+                    <button type="button" onClick={()=>router.push(`/dashboard/projects/${encodeURIComponent(project.id)}/publish`)}>{project.isPublished?(project.publishedAt&&new Date(project.updatedAt)>new Date(project.publishedAt)?"Republish changes":"Publishing details"):"Publish"}</button>
+                    {project.isPublished&&project.slug&&<a href={`/${project.slug}`} target="_blank" rel="noreferrer">View live site</a>}
                     {githubEnabled&&<button type="button" disabled={!project.repositoryUrl || busyProjectId === project.id} title={project.repositoryUrl ? "Push the website files" : "Link a repository first"} onClick={() => createTestCommit(project)}>{busyProjectId === project.id ? "Pushing..." : "Push website"}</button>}
                     {githubEnabled&&<button type="button" onClick={() => openRepositoryDialog(project)}>{project.repositoryUrl ? "Edit repository link" : "Link repository"}</button>}
                     <button type="button" className={actionStyles.deleteButton} disabled={busyProjectId === project.id} onClick={() => deleteDashboardProject(project)}>Delete</button>

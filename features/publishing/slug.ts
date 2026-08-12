@@ -1,7 +1,9 @@
 import { z } from "zod";
 
-export const RESERVED_SLUGS = new Set(["api", "admin", "dashboard", "editor", "login", "preview", "sites", "www"]);
-export const slugSchema = z.string().trim().min(3).max(80).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and single hyphens only.").refine((value) => !RESERVED_SLUGS.has(value), "This slug is reserved.");
+export const SLUG_MIN_LENGTH = 3;
+export const SLUG_MAX_LENGTH = 80;
+export const RESERVED_SLUGS = new Set(["api", "admin", "dashboard", "editor", "login", "logout", "preview", "publish", "projects", "sites", "www", "_next", "favicon.ico", "robots.txt", "sitemap.xml"]);
+export const slugSchema = z.string().trim().min(SLUG_MIN_LENGTH).max(SLUG_MAX_LENGTH).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and single hyphens only.").refine((value) => !RESERVED_SLUGS.has(value.toLowerCase()), "This slug is reserved.");
 
 export function slugify(value: string) {
   const base = value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80).replace(/-$/g, "");
@@ -9,4 +11,4 @@ export function slugify(value: string) {
   return candidate.slice(0, 80).replace(/-$/g, "");
 }
 
-export const publishRequestSchema = z.object({ slug: slugSchema.optional() }).strict();
+export const publishRequestSchema = z.object({ slug: slugSchema.optional(), expectedRevision: z.number().int().nonnegative().optional() }).strict();

@@ -64,6 +64,8 @@ async function main(): Promise<void> {
       name: "My Portfolio",
       website: createWebsiteJson(),
       ownerId: developmentUser.id,
+      initialPresetId: "modern",
+      editorSetupCompletedAt: new Date(),
     },
 
     create: {
@@ -71,6 +73,8 @@ async function main(): Promise<void> {
       name: "My Portfolio",
       website: createWebsiteJson(),
       ownerId: developmentUser.id,
+      initialPresetId: "modern",
+      editorSetupCompletedAt: new Date(),
     },
   });
 
@@ -84,6 +88,8 @@ async function main(): Promise<void> {
         name: "Experimental Landing Page",
         website: createWebsiteJson(),
         ownerId: developmentUser.id,
+        initialPresetId: "modern",
+        editorSetupCompletedAt: new Date(),
       },
 
       create: {
@@ -91,6 +97,8 @@ async function main(): Promise<void> {
         name: "Experimental Landing Page",
         website: createWebsiteJson(),
         ownerId: developmentUser.id,
+        initialPresetId: "modern",
+        editorSetupCompletedAt: new Date(),
       },
     });
 
