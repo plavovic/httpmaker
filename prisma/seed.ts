@@ -42,7 +42,7 @@ async function main(): Promise<void> {
     where: {
       email: DEVELOPMENT_USER_EMAIL,
     },
-
+    
     update: {
       firstName: "HTTPMAKER",
       lastName: "Developer",
