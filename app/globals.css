@@ -43,21 +43,24 @@ body.website-preview-document {
   min-width: 0;
   margin: 0;
   overflow-x: hidden;
-  scrollbar-color: color-mix(in srgb, currentColor 25%, transparent) transparent;
-  scrollbar-width: thin;
+  scrollbar-width: none !important;
+  scrollbar-gutter: auto !important;
 }
 html.website-preview-document::-webkit-scrollbar,
-body.website-preview-document::-webkit-scrollbar { width: 8px; height: 8px; }
+body.website-preview-document::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none; }
 html.website-preview-document::-webkit-scrollbar-track,
 body.website-preview-document::-webkit-scrollbar-track { background: transparent; }
 html.website-preview-document::-webkit-scrollbar-thumb,
 body.website-preview-document::-webkit-scrollbar-thumb { border-radius: 999px; background: color-mix(in srgb, currentColor 25%, transparent); }
-body.website-preview-document > .site-renderer {
+body.website-preview-document > .site-renderer,
+.public-site-document > .site-renderer {
   display: block;
   width: 100%;
   max-width: none;
   margin: 0;
 }
+.public-site-document { position: relative; overflow: clip; border: 0; padding: 0; }
+.public-site-document .site-renderer { border: 0 !important; padding: 0 !important; box-shadow: none !important; }
 
 ::selection {
   background: rgba(130, 170, 255, .28);
@@ -1007,6 +1010,22 @@ body.website-preview-document > .site-renderer,
 body.website-preview-document > .site-renderer.site-preview {
   width: 100% !important;
   max-width: 100% !important;
+}
+body.website-preview-document .public-site-document,
+body.website-preview-document .public-site-document > .site-renderer,
+body.website-preview-document .public-site-document > .site-renderer.site-preview {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+}
+body.website-preview-document .public-site-document .site-preview .site-section,
+body.website-preview-document .public-site-document .site-preview .site-section > *,
+body.website-preview-document .public-site-document .site-preview .site-navbar,
+body.website-preview-document .public-site-document .site-preview .site-section:not([data-section-type="navbar"]) > section,
+body.website-preview-document .public-site-document .site-preview .site-section:not([data-section-type="navbar"]) > footer {
+  width: 100% !important;
+  max-width: none !important;
+  margin-inline: 0 !important;
 }
 body.website-preview-document > .site-preview .site-section,
 body.website-preview-document > .site-preview .site-section > *,

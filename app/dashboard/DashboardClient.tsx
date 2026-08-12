@@ -83,6 +83,7 @@ export default function DashboardClient({ user, initialProjects, githubEnabled }
   const [latestCommits, setLatestCommits] = useState<Record<string, LatestCommit | null>>({});
   const workspaceOwner = user.name.trim() || "Your";
   const workspaceTitle = workspaceOwner === "Your" ? "Your workspace" : `${workspaceOwner}${workspaceOwner.toLowerCase().endsWith("s") ? "’" : "’s"} workspace`;
+  const activeGitHubInstallations=installations.filter(installation=>installation.status==="active");
 
   useEffect(() => {
     setColorMode(readStoredEditorTheme());
@@ -306,6 +307,7 @@ export default function DashboardClient({ user, initialProjects, githubEnabled }
             </button>
             {profileOpen && <div className={styles.profileMenu}>
               <div className={styles.profileSummary}><strong>{user.name}</strong><span>{user.email}</span></div>
+              {githubEnabled&&<div className={styles.githubProfileStatus}>{activeGitHubInstallations.length?<><span className={styles.connectedDot}/><div><small>GitHub connected</small>{activeGitHubInstallations.map(installation=><strong key={installation.id}>@{installation.accountLogin}</strong>)}</div></>:<><span className={styles.disconnectedDot}/><div><small>GitHub not connected</small><button type="button" onClick={()=>void connectGitHub()}>Connect GitHub</button></div></>}</div>}
               <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading}>{uploading ? "Uploading…" : "Change profile picture"}</button>
               <button type="button" disabled>Account settings <small>Coming soon</small></button>
               <button type="button" disabled>Preferences <small>Coming soon</small></button>
@@ -333,7 +335,7 @@ export default function DashboardClient({ user, initialProjects, githubEnabled }
               <div className={styles.projectName}>
                 <i>{project.name.slice(0, 1).toUpperCase()}</i>
                 <div className={commitStyles.projectDetails}>
-                  <strong>{project.name}</strong>
+                  <div className={styles.projectTitleLine}><strong>{project.name}</strong>{project.isPublished?<span className={styles.liveBadge}><i/>LIVE</span>:project.publishedAt?<span className={styles.unpublishedBadge}>UNPUBLISHED</span>:<span className={styles.draftBadge}>DRAFT</span>}</div>
                   {githubEnabled && project.repositoryUrl && <div className={commitStyles.commitBox}>
                     {latestCommits[project.id] === undefined ? <span className={commitStyles.commitMuted}>Loading latest commit...</span> : latestCommits[project.id] === null ? <span className={commitStyles.commitMuted}>Latest commit unavailable</span> : <>
                       <div className={commitStyles.commitText}>

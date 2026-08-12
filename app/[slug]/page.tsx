@@ -12,9 +12,11 @@ const configuredOrigin = () => {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const data = await loadPublishedSite((await params).slug);
   if (!data) return {};
+  const navbar = data.website.sections.find((section) => section.type === "navbar");
   const hero = data.website.sections.find((section) => section.type === "hero");
   const origin = configuredOrigin();
-  return { title: hero?.props.title || data.project.name || "HTTPMAKER site", description: hero?.props.subtitle || "Published with HTTPMAKER", ...(origin ? { alternates: { canonical: `${origin}/${data.project.slug}` } } : {}) };
+  const title = navbar?.props.title.trim() || hero?.props.title.trim() || data.project.name || "HTTPMAKER site";
+  return { title, description: hero?.props.subtitle || navbar?.props.subtitle || "Published with HTTPMAKER", applicationName:title, ...(origin ? { alternates: { canonical: `${origin}/${data.project.slug}` } } : {}) };
 }
 
 export default async function RootPublicSitePage({ params }: { params: Promise<{ slug: string }> }) {
