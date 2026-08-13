@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
-import { findProjectByIdAndOwner, publishProject, SlugConflictError, unpublishProject } from "@/features/projects/server/project.repository";
+import { findOtherPublishedProject, findProjectByIdAndOwner, LivePublicationLimitError, publishProject, SlugConflictError, unpublishProject } from "@/features/projects/server/project.repository";
 import { publishRequestSchema } from "@/features/publishing/slug";
 import { findLegacyAssetReferences } from "@/features/publishing/assets";
 import { prepareProjectPublication } from "@/features/publishing/server/preflight";
@@ -19,7 +19,8 @@ export async function GET(_request: Request, context: Context) {
   if (!project) return apiError("PROJECT_NOT_FOUND", "Project not found.", 404);
   const parsed = safelyParseWebsiteData(project.website);
   const unresolvedAssetCount = parsed.success ? findLegacyAssetReferences(parsed.data).length : 0;
-  return Response.json({ project: { id: project.id, name: project.name, slug: project.slug, isPublished: project.isPublished, updatedAt: project.updatedAt, publishedAt: project.publishedAt, draftRevision: project.draftRevision, publishedRevision: project.publishedRevision, publicationTitle: project.publicationTitle, publicationIconUrl: project.publicationIconUrl, publicationIconData: project.publicationIconData }, preflight: { draftValid: parsed.success, unresolvedAssetCount } });
+  const otherLiveProject = await findOtherPublishedProject(ownerId, project.id);
+  return Response.json({ project: { id: project.id, name: project.name, slug: project.slug, isPublished: project.isPublished, updatedAt: project.updatedAt, publishedAt: project.publishedAt, draftRevision: project.draftRevision, publishedRevision: project.publishedRevision, publicationTitle: project.publicationTitle, publicationIconUrl: project.publicationIconUrl, publicationIconData: project.publicationIconData }, preflight: { draftValid: parsed.success, unresolvedAssetCount }, publicationLimit: { otherLiveProject } });
 }
 
 export async function POST(request: Request, context: Context) {
@@ -46,6 +47,7 @@ export async function POST(request: Request, context: Context) {
     if (!publication) return apiError("DRAFT_CONFLICT", "The draft changed while publishing. Reload and try again.", 409);
     return Response.json({ publication: { ...publication, path: `/${publication.slug}` } });
   } catch (error) {
+    if (error instanceof LivePublicationLimitError) return apiError("LIVE_PUBLICATION_LIMIT", `“${error.liveProject.name}” is already live. Unpublish it before publishing another website.`, 409, { liveProject: error.liveProject });
     if (error instanceof SlugConflictError || (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")) return apiError("SLUG_TAKEN", "That public URL is already in use.", 409);
     console.error("Publish failed", { projectId, ownerId, errorName: error instanceof Error ? error.name : "unknown" });
     return apiError("PUBLISH_FAILED", "Unable to publish the project.", 500);

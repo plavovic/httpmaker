@@ -121,14 +121,30 @@ export async function deleteProject(
   });
 }
 export class SlugConflictError extends Error {}
+export class LivePublicationLimitError extends Error {
+  constructor(public readonly liveProject: { id: string; name: string; slug: string | null }) {
+    super("Only one website can be live at a time.");
+    this.name = "LivePublicationLimitError";
+  }
+}
 
 export const setProjectDeletionState = (projectId: string, ownerId: string, deletionState: string, deletionError: string | null = null) =>
   prisma.project.updateMany({ where: { id: projectId, ownerId }, data: { deletionState, deletionError } });
 
 export const findPublishedProjectBySlug = (slug: string) => prisma.project.findFirst({ where: { slug, isPublished: true, publishedWebsite: { not: Prisma.DbNull } }, select: { name: true, slug: true, publishedWebsite: true, publishedAt: true, publicationTitle: true, publicationIconUrl: true, publicationIconData: true } });
 
+export const findOtherPublishedProject = (ownerId: string, projectId: string) => prisma.project.findFirst({
+  where: { ownerId, isPublished: true, deletionState: "active", NOT: { id: projectId } },
+  select: { id: true, name: true, slug: true },
+});
+
 export async function publishProject(projectId: string, ownerId: string, slug: string, website: unknown, revision: number, branding: { title: string; iconUrl: string | null; iconData: string | null }) {
   return prisma.$transaction(async (tx) => {
+    // Serialize publication attempts per owner so concurrent requests cannot put
+    // two of the same user's projects live at once.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${ownerId}))`;
+    const liveProject = await tx.project.findFirst({ where: { ownerId, isPublished: true, deletionState: "active", NOT: { id: projectId } }, select: { id: true, name: true, slug: true } });
+    if (liveProject) throw new LivePublicationLimitError(liveProject);
     const claimed = await tx.project.findFirst({ where: { slug, NOT: { id: projectId } }, select: { id: true } });
     if (claimed) throw new SlugConflictError("Slug conflict");
     const updated = await tx.project.updateMany({ where: { id: projectId, ownerId, draftRevision: revision, deletionState: "active" }, data: { slug, publicationTitle: branding.title, publicationIconUrl: branding.iconUrl, publicationIconData: branding.iconData, publishedWebsite: toPrismaJson(website), publishedRevision: revision, isPublished: true, publishedAt: new Date() } });
